@@ -6,4 +6,6 @@ public interface ExecutorMasterOutputListener {
 
 	void appendOutput(String line);
 
+	void startedProcess(Long pid);
+
 }

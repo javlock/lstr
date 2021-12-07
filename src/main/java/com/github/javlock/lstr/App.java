@@ -2,12 +2,24 @@ package com.github.javlock.lstr;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetSocketAddress;
+import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.PosixFilePermission;
 import java.sql.SQLException;
-import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 import org.apache.commons.lang3.SystemUtils;
 import org.slf4j.Logger;
@@ -17,7 +29,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.github.javlock.lstr.data.Addr;
 import com.github.javlock.lstr.data.AppInfo;
-import com.github.javlock.lstr.utils.io.IOUtils;
 import com.j256.ormlite.dao.Dao;
 import com.j256.ormlite.dao.DaoManager;
 import com.j256.ormlite.jdbc.JdbcConnectionSource;
@@ -42,7 +53,12 @@ import lombok.Getter;
 import lombok.Setter;
 
 public class App extends Thread {
+
 	static class AppConfig {
+		static class TorConfig {
+			private @Getter @Setter int socksPort = 10359;
+		}
+
 		public static void readConfig(App app) throws IOException {
 			if (CONFIGFILE.exists()) {
 				app.objectMapper.readValue(CONFIGFILE, AppConfig.class);
@@ -56,6 +72,8 @@ public class App extends Thread {
 
 		private @Getter @Setter String uuid = UUID.randomUUID().toString();
 		private @Getter @Setter int serverPort = 49000;
+
+		private @Getter @Setter TorConfig torConfig = new TorConfig();
 
 	}
 
@@ -219,28 +237,62 @@ public class App extends Thread {
 
 	static class TorWorker extends Thread {
 		private static final Logger LOGGER = LoggerFactory.getLogger("TorWorker");
-		private File torBin = getTorBin();
 
-		private File getTorBin() {
-			String name = "tor";
-			if (SystemUtils.IS_OS_WINDOWS) {
-				name = name + ".exe";
+		private static final String TORBIN = "torbin/";
+		private static final File TORBINDIR = new File(new File(DIR, TORBIN).getAbsolutePath());
+
+		String filesDirName = TORBIN;
+		String osName = getOsName();
+		String arch = SystemUtils.OS_ARCH;
+		String nameBin = "tor";
+
+		private File torBin;
+
+		// private File torBin;
+		// ->
+		File torrc = new File(TORBINDIR, "torrc");
+
+		private void createConfig(App app) throws IOException {
+			StringBuilder builder = new StringBuilder();
+			builder.append("Log notice stdout").append('\n');
+			builder.append("DataDirectory data").append('\n');
+			if (!torrc.exists()) {
+				builder.append("SOCKSPort ").append(app.config.torConfig.socksPort).append('\n');
+				Files.createFile(torrc.toPath());
+			} else {
+				List<String> lines = Files.readAllLines(app.torWorker.torrc.toPath(), StandardCharsets.UTF_8);
+				for (String string : lines) {
+					if (string.toLowerCase().startsWith("SOCKSPort".toLowerCase())) {
+						LOGGER.info(string);
+					}
+				}
 			}
-			return new File(new File(new File(TORBINDIR, SystemUtils.OS_NAME), SystemUtils.OS_ARCH), name);
+			Files.writeString(app.torWorker.torrc.toPath(), builder, StandardOpenOption.TRUNCATE_EXISTING);
 		}
 
-		public void init() throws IOException {
-			LOGGER.info("{}", torBin.getAbsolutePath());
+		private String getOsName() {
+			if (SystemUtils.IS_OS_WINDOWS) {
+				return "Windows";
+			}
+			if (SystemUtils.IS_OS_LINUX) {
+				return "Linux";
+			}
+			throw new UnsupportedOperationException("OS not : WINDOWS OR LINUX");
+		}
+
+		public void init(App app) throws IOException {
 			unpack();
+			createConfig(app);
 		}
 
 		@Override
 		public void run() {
 			Thread.currentThread().setName("TorWorker");
-			try {
-				// TODO check
-				// start
+
+			try { // TODO check // start
+
 				int statusTor = new ExecutorMaster().setOutputListener(new ExecutorMasterOutputListener() {
+
 					@Override
 					public void appendInput(String line) {
 						LOGGER.info(line);
@@ -250,9 +302,21 @@ public class App extends Thread {
 					public void appendOutput(String line) {
 						LOGGER.info(line);
 					}
-				}).parrentCommand(torBin.getAbsolutePath()).dir(TORBINDIR)
-						// .command(maven + " clean install && exit 0 ")
-						.call();
+
+					@Override
+					public void startedProcess(Long pid) {
+						LOGGER.info("add hook for tor with pid {}", pid);
+						Runtime.getRuntime().addShutdownHook(new Thread((Runnable) () -> {
+							Optional<ProcessHandle> processOptional = ProcessHandle.of(pid);
+							if (processOptional.isPresent()) {
+								ProcessHandle process = processOptional.get();
+								process.destroyForcibly();
+								LOGGER.info("process tor with pid {} .destroyForcibly()", pid);
+							}
+						}, "ShutdownHook-" + pid));
+						LOGGER.info("add hook for tor with pid {} -- OK", pid);
+					}
+				}).parrentCommand(torBin.getAbsolutePath()).arg("-f " + torrc.getAbsolutePath()).dir(TORBINDIR).call();
 				LOGGER.info("tor stop with status:{}", statusTor);
 			} catch (IOException | InterruptedException e) {
 				e.printStackTrace();
@@ -261,35 +325,82 @@ public class App extends Thread {
 		}
 
 		private void unpack() throws IOException {
-			// TODO Auto-generated method stub
+			filesDirName = filesDirName + osName + "." + arch;
+			LOGGER.info("----------UNZIP-------------");
+			try (ZipFile file = new ZipFile(jarPath)) {
+				// Get file entries
+				Enumeration<? extends ZipEntry> entries = file.entries();
+				while (entries.hasMoreElements()) {
+					ZipEntry entry = entries.nextElement();
+					String entryName = entry.getName();
+					String entryNameLC = entryName.toLowerCase();
 
-			String filesListName = "torbin/";
-			String arch = SystemUtils.OS_ARCH;
+					if (entryName.startsWith(TORBIN + osName + "." + arch)) {
+						File f = new File(DIR, entryName);
 
-			if (SystemUtils.IS_OS_WINDOWS) {
-				filesListName = filesListName + "WWW." + arch + ".List";
-			} else if (SystemUtils.IS_OS_LINUX) {
-				filesListName = filesListName + "Linux." + arch + ".List";
+						LOGGER.info("unpack():{}", entryName);
+
+						if (entry.isDirectory()) {
+							f.mkdirs();
+						} else {
+							if (!f.exists()) {
+								if (!f.getParentFile().exists()) {
+									f.getParentFile().mkdirs();
+								}
+								Files.createFile(f.toPath());
+							}
+							InputStream is = file.getInputStream(entry);
+							Files.copy(is, f.toPath(), StandardCopyOption.REPLACE_EXISTING);
+							if (f.getName().toLowerCase().startsWith("tor.exe")
+									|| f.getName().toLowerCase().startsWith("tor")) {
+								torBin = f;
+
+								if (!SystemUtils.IS_OS_WINDOWS) {
+									Set<PosixFilePermission> perms = Files.getPosixFilePermissions(torBin.toPath(),
+											LinkOption.NOFOLLOW_LINKS);
+									perms.add(PosixFilePermission.OWNER_WRITE);
+									perms.add(PosixFilePermission.OWNER_READ);
+									perms.add(PosixFilePermission.OWNER_EXECUTE);
+									perms.remove(PosixFilePermission.GROUP_WRITE);
+									perms.remove(PosixFilePermission.GROUP_READ);
+									perms.remove(PosixFilePermission.GROUP_EXECUTE);
+									perms.remove(PosixFilePermission.OTHERS_EXECUTE);
+									perms.remove(PosixFilePermission.OTHERS_READ);
+									perms.remove(PosixFilePermission.OTHERS_WRITE);
+									Files.setPosixFilePermissions(torBin.toPath(), perms);
+									Files.setPosixFilePermissions(f.toPath(), perms);
+								}
+							}
+
+							LOGGER.info("Written :{}", entryName);
+						}
+
+						// torbin+OS+arch
+					}
+
+					// If directory then create a new directory in uncompressed folder
+
+				}
 			}
-			LOGGER.info("unpack from {}", filesListName);
-			ArrayList<String> files = IOUtils.readLinesFromResourceFile(filesListName);
-			for (String file : files) {
-				LOGGER.info("unpack {} to {}", file, null);
-			}
+
+			LOGGER.info("----------UNZIP-------------");
 		}
 
 	}
 
 	private static final File DIR = new File("App");
+
 	private static final File CONFIGFILE = new File(DIR, "config.yaml");
-	private static final File TORBINDIR = new File(DIR, "torBins");
+
+	private static String jarPath;
 
 	public static void main(String[] args) {
 		try {
 			App app = new App();
+			System.out.println("App.main():" + jarPath);
 			app.init();
 			app.start();
-		} catch (IOException | SQLException e) {
+		} catch (IOException | SQLException | URISyntaxException e) {
 			e.printStackTrace();
 		}
 	}
@@ -301,17 +412,22 @@ public class App extends Thread {
 	AppConfig config = new AppConfig();
 
 	DataBase dataBase = new DataBase();
+
 	NetClient client = new NetClient();
 	NetServer server = new NetServer();
-
 	boolean active = true;
+
+	public App() throws URISyntaxException {
+		jarPath = App.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath();
+
+	}
 
 	private void init() throws IOException, SQLException {
 		// files
 		AppConfig.readConfig(this);
 		dataBase.init();
 		server.init();
-		torWorker.init();
+		torWorker.init(this);
 	}
 
 	@Override

@@ -7,6 +7,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class ExecutorMaster {
@@ -16,10 +17,26 @@ public class ExecutorMaster {
 
 	CopyOnWriteArrayList<String> progs = new CopyOnWriteArrayList<>();
 	OutputStreamWriter osw;
+	private ArrayList<String> args = new ArrayList<>();
+
+	public ExecutorMaster arg(String arg) {
+		String[] ar = arg.split(" ");
+		for (String string : ar) {
+			args.add(string);
+		}
+		return this;
+	}
 
 	public int call() throws IOException, InterruptedException {
 		processBuilder.redirectErrorStream(true);
+
+		ArrayList<String> realCmd = new ArrayList<>();
+		realCmd.add(parentProg);
+		realCmd.addAll(args);
+
+		processBuilder.command(realCmd);
 		Process process = processBuilder.start();
+		outputListener.startedProcess(process.pid());
 
 		try (BufferedReader reader = new BufferedReader(
 				new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
@@ -76,7 +93,6 @@ public class ExecutorMaster {
 
 	public ExecutorMaster parrentCommand(String cmd) {
 		parentProg = cmd;
-		processBuilder.command(parentProg);
 		return this;
 	}
 

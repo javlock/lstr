@@ -16,12 +16,14 @@ public class IOUtils {
 	public static ArrayList<String> readLinesFromResourceFile(String file) throws IOException {
 		ArrayList<String> result = new ArrayList<>();
 		ClassLoader classLoader = IOUtils.class.getClassLoader();
-		try (BufferedReader listFile = new BufferedReader(
+
+		try (BufferedReader reader = new BufferedReader(
 				new InputStreamReader(classLoader.getResourceAsStream(file), StandardCharsets.UTF_8))) {
-			String assetResource = null;
-			while ((assetResource = listFile.readLine()) != null) {
-				LOGGER.info("2:{}", assetResource);
-				result.add(assetResource);
+
+			String string = null;
+			while ((string = reader.readLine()) != null) {
+				LOGGER.info("readed:{}", string);
+				result.add(string);
 				// Path assetFile = assetDir.resolve(assetResource);
 				// Files.createDirectories(assetFile.getParent());
 				// try (InputStream asset = getClass().getResourceAsStream(assetResource)) {
