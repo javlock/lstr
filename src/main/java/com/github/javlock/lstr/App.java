@@ -53,15 +53,15 @@ import lombok.Getter;
 import lombok.Setter;
 
 public class App extends Thread {
-
 	static class AppConfig {
 		static class TorConfig {
 			private @Getter @Setter int socksPort = 10359;
+			public String infohostname;
 		}
 
 		public static void readConfig(App app) throws IOException {
 			if (CONFIGFILE.exists()) {
-				app.objectMapper.readValue(CONFIGFILE, AppConfig.class);
+				app.config = app.objectMapper.readValue(CONFIGFILE, AppConfig.class);
 			} else {
 				if (!DIR.exists()) {
 					Files.createDirectories(DIR.toPath());
@@ -241,33 +241,50 @@ public class App extends Thread {
 		private static final String TORBIN = "torbin/";
 		private static final File TORBINDIR = new File(new File(DIR, TORBIN).getAbsolutePath());
 
+		private static final File TORRC = new File(TORBINDIR, "torrc");
+		private static final File TORDATADIR = new File(TORBINDIR, "data");
+		private static final File TORSERVICEDIR = new File(TORDATADIR, "service");
+		private static final File TORSERVICEHOSTNAMFILE = new File(TORSERVICEDIR, "hostname");
+
 		String filesDirName = TORBIN;
 		String osName = getOsName();
+
 		String arch = SystemUtils.OS_ARCH;
+
 		String nameBin = "tor";
-
 		private File torBin;
+		private App app;
 
-		// private File torBin;
-		// ->
-		File torrc = new File(TORBINDIR, "torrc");
+		public TorWorker(App app) {
+			this.app = app;
+		}
 
 		private void createConfig(App app) throws IOException {
+			int soPort = app.config.torConfig.socksPort;
+
 			StringBuilder builder = new StringBuilder();
+
 			builder.append("Log notice stdout").append('\n');
-			builder.append("DataDirectory data").append('\n');
-			if (!torrc.exists()) {
-				builder.append("SOCKSPort ").append(app.config.torConfig.socksPort).append('\n');
-				Files.createFile(torrc.toPath());
+			builder.append("DataDirectory ").append(TORDATADIR.getAbsolutePath()).append('\n');
+
+			builder.append("HiddenServiceDir ").append(TORSERVICEDIR.getAbsolutePath()).append('\n');
+			builder.append("HiddenServicePort 4001 127.0.0.1:" + soPort).append('\n');
+
+			if (!TORRC.exists()) {
+				builder.append("SOCKSPort ").append(soPort).append('\n');
+				Files.createFile(TORRC.toPath());
 			} else {
-				List<String> lines = Files.readAllLines(app.torWorker.torrc.toPath(), StandardCharsets.UTF_8);
+				List<String> lines = Files.readAllLines(TORRC.toPath(), StandardCharsets.UTF_8);
 				for (String string : lines) {
 					if (string.toLowerCase().startsWith("SOCKSPort".toLowerCase())) {
 						LOGGER.info(string);
 					}
+					if (string.toLowerCase().startsWith("HiddenServicePort".toLowerCase())) {
+						LOGGER.info(string);
+					}
 				}
 			}
-			Files.writeString(app.torWorker.torrc.toPath(), builder, StandardOpenOption.TRUNCATE_EXISTING);
+			Files.writeString(TORRC.toPath(), builder, StandardOpenOption.TRUNCATE_EXISTING);
 		}
 
 		private String getOsName() {
@@ -289,8 +306,7 @@ public class App extends Thread {
 		public void run() {
 			Thread.currentThread().setName("TorWorker");
 
-			try { // TODO check // start
-
+			try {
 				int statusTor = new ExecutorMaster().setOutputListener(new ExecutorMasterOutputListener() {
 
 					@Override
@@ -299,8 +315,12 @@ public class App extends Thread {
 					}
 
 					@Override
-					public void appendOutput(String line) {
-						LOGGER.info(line);
+					public void appendOutput(String line) throws IOException {
+						if (line.contains("Bootstrapped 100%")) {
+							LOGGER.info(line);
+							String domain = Files.readString(TORSERVICEHOSTNAMFILE.toPath(), StandardCharsets.UTF_8);
+							app.torServiceHost(domain);
+						}
 					}
 
 					@Override
@@ -316,10 +336,11 @@ public class App extends Thread {
 						}, "ShutdownHook-" + pid));
 						LOGGER.info("add hook for tor with pid {} -- OK", pid);
 					}
-				}).parrentCommand(torBin.getAbsolutePath()).arg("-f " + torrc.getAbsolutePath()).dir(TORBINDIR).call();
+				}).parrentCommand(torBin.getAbsolutePath()).arg("-f " + TORRC.getAbsolutePath()).dir(TORBINDIR).call();
 				LOGGER.info("tor stop with status:{}", statusTor);
 			} catch (IOException | InterruptedException e) {
 				e.printStackTrace();
+				app.active = false;
 			}
 
 		}
@@ -333,7 +354,6 @@ public class App extends Thread {
 				while (entries.hasMoreElements()) {
 					ZipEntry entry = entries.nextElement();
 					String entryName = entry.getName();
-					String entryNameLC = entryName.toLowerCase();
 
 					if (entryName.startsWith(TORBIN + osName + "." + arch)) {
 						File f = new File(DIR, entryName);
@@ -388,6 +408,8 @@ public class App extends Thread {
 
 	}
 
+	private static final Logger LOGGER = LoggerFactory.getLogger("App");
+
 	private static final File DIR = new File("App");
 
 	private static final File CONFIGFILE = new File(DIR, "config.yaml");
@@ -405,7 +427,7 @@ public class App extends Thread {
 		}
 	}
 
-	private TorWorker torWorker = new TorWorker();
+	private TorWorker torWorker = new TorWorker(this);
 
 	private final ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
 
@@ -414,12 +436,12 @@ public class App extends Thread {
 	DataBase dataBase = new DataBase();
 
 	NetClient client = new NetClient();
+
 	NetServer server = new NetServer();
 	boolean active = true;
 
 	public App() throws URISyntaxException {
 		jarPath = App.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath();
-
 	}
 
 	private void init() throws IOException, SQLException {
@@ -435,5 +457,18 @@ public class App extends Thread {
 		server.bind();
 		torWorker.start();
 		client.startConnector();
+	}
+
+	protected void torServiceHost(String domain) throws IOException {
+		LOGGER.info("TOR DOMAIN IS {}", domain);
+		boolean needWrite = config.torConfig.infohostname == null || !config.torConfig.infohostname.equals(domain);
+		config.torConfig.infohostname = domain;
+		if (needWrite) {
+			writeConfig();
+		}
+	}
+
+	private void writeConfig() throws IOException {
+		objectMapper.writeValue(CONFIGFILE, config);
 	}
 }
