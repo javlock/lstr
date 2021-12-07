@@ -13,7 +13,6 @@ import java.nio.file.Files;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.UUID;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -98,6 +97,7 @@ public class App extends Thread {
 
 					for (String string : lines) {
 						LOGGER.info(string);
+						app.torBootstrapDomain(string);
 					}
 				} catch (IOException e) {
 					e.printStackTrace();
@@ -136,61 +136,6 @@ public class App extends Thread {
 			createSource();
 			createDAOs();
 			createTables();
-		}
-	}
-
-	class NetClient {
-		class NetClientConnector extends Thread {
-			private boolean connect(Addr addr) {
-				String host = addr.getHost();
-				int port = addr.getPort();
-
-				return false;// TODO REWRITE TO RESULT
-			}
-
-			@Override
-			public void run() {
-				Thread.currentThread().setName("NetClientConnector");
-
-				while (active) { // loop
-					for (AppInfo appInfo : connectionInfos) {
-						if (appInfo.isConnected()) {
-							LOGGER.info("isConnected");
-							continue;
-						}
-						boolean connected = false;
-						connectedLabel: {
-							LOGGER.info("connectedLabel");
-							if (!connected) {
-								LOGGER.info("!connected");
-
-								for (Addr addr : appInfo.getAddrs()) {
-									if (connect(addr)) {
-										connected = true;
-										break connectedLabel;
-									} // TODO NOT CONNECTED
-								}
-							} else {
-								LOGGER.info("!connected ELSE");
-							}
-						}
-					}
-					try {
-						Thread.sleep(3000);
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}
-				} // loop
-			}
-		}
-
-		private static final Logger LOGGER = LoggerFactory.getLogger("NetClient");
-
-		private final CopyOnWriteArrayList<AppInfo> connectionInfos = new CopyOnWriteArrayList<>();
-		private final NetClientConnector connector = new NetClientConnector();
-
-		public void startConnector() {
-			connector.start();
 		}
 	}
 
@@ -299,9 +244,10 @@ public class App extends Thread {
 
 	DataBase dataBase = new DataBase();
 
-	NetClient client = new NetClient();
+	NetClient client = new NetClient(this);
 
 	NetServer server = new NetServer();
+
 	public boolean active = true;
 
 	public App() throws URISyntaxException {
@@ -322,6 +268,10 @@ public class App extends Thread {
 		torWorker.start();
 		bootStrapRunner.start();
 		client.startConnector();
+	}
+
+	public void torBootstrapDomain(String onionDomain) {
+		client.connector.appendDomain(onionDomain);
 	}
 
 	public void torServiceHost(String domain) throws IOException {
