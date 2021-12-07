@@ -1,7 +1,7 @@
 package com.github.javlock.lstr.data;
 
 import java.io.Serializable;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.Objects;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import com.j256.ormlite.field.DatabaseField;
 import com.j256.ormlite.table.DatabaseTable;
 
+import io.netty.channel.ChannelHandlerContext;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -16,9 +17,12 @@ import lombok.Setter;
 public class AppInfo implements Serializable {
 	private static final long serialVersionUID = -687125762693928112L;
 	private static final transient Logger LOGGER = LoggerFactory.getLogger("AppInfo");
+
 	private @Getter @Setter @DatabaseField(id = true) String uuid;
 
-	private @Getter CopyOnWriteArrayList<Addr> addrs = new CopyOnWriteArrayList<>();
+	private @Getter @Setter @DatabaseField String host;
+	private @Getter @Setter @DatabaseField int port;
+	private transient @Getter @Setter ChannelHandlerContext context;
 
 	public AppInfo() {
 
@@ -28,13 +32,28 @@ public class AppInfo implements Serializable {
 		uuid = id;
 	}
 
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj) {
+			return true;
+		}
+		if (!(obj instanceof AppInfo)) {
+			return false;
+		}
+		AppInfo other = (AppInfo) obj;
+		return Objects.equals(host, other.host) && port == other.port && Objects.equals(uuid, other.uuid);
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(host, port, uuid);
+	}
+
 	public boolean isConnected() {
-		for (Addr addr : addrs) {
-			if (addr.getContext() != null) {
-				LOGGER.info("isActive {}", addr.getContext().channel().isActive());
-				LOGGER.info("isOpen {}", addr.getContext().channel().isOpen());
-				return true;
-			}
+		if (context != null) {
+			LOGGER.info("isActive {}", context.channel().isActive());
+			LOGGER.info("isOpen {}", context.channel().isOpen());
+			return true;
 		}
 		return false;
 	}

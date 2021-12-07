@@ -19,7 +19,6 @@ import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.github.javlock.lstr.data.Addr;
 import com.github.javlock.lstr.data.AppInfo;
 import com.github.javlock.lstr.services.TorWorker;
 import com.j256.ormlite.dao.Dao;
@@ -96,7 +95,6 @@ public class App extends Thread {
 					}
 
 					for (String string : lines) {
-						LOGGER.info(string);
 						app.torBootstrapDomain(string);
 					}
 				} catch (IOException e) {
@@ -114,11 +112,9 @@ public class App extends Thread {
 
 	class DataBase {
 		ConnectionSource connectionSource;
-		private Dao<Addr, Long> addrDao;
 		private Dao<AppInfo, ?> appInfoDao;// FIXME id Type
 
 		private void createDAOs() throws SQLException {
-			addrDao = DaoManager.createDao(connectionSource, Addr.class);
 			appInfoDao = DaoManager.createDao(connectionSource, AppInfo.class);
 		}
 
@@ -128,7 +124,6 @@ public class App extends Thread {
 		}
 
 		private void createTables() throws SQLException {
-			TableUtils.createTableIfNotExists(connectionSource, Addr.class);
 			TableUtils.createTableIfNotExists(connectionSource, AppInfo.class);
 		}
 
@@ -139,18 +134,25 @@ public class App extends Thread {
 		}
 	}
 
-	class NetClientHandler extends NetHandler {
-		public NetClientHandler() {
+	public static class NetClientHandler extends NetHandler {
+
+		public NetClientHandler(String uuid, String host, int port) {
+			this.uuid = uuid;
+			this.host = host;
+			this.port = port;
 			setType(HandlerType.CLIENT);
 		}
 	}
 
-	class NetHandler extends ChannelDuplexHandler {
+	public static class NetHandler extends ChannelDuplexHandler {
 		enum HandlerType {
 			NA, SERVER, CLIENT
 		}
 
 		protected static final Logger LOGGER = LoggerFactory.getLogger("NetHandler");
+		protected String uuid;
+		protected String host;
+		protected int port;
 
 		private @Getter @Setter HandlerType type = HandlerType.NA;
 
@@ -162,6 +164,7 @@ public class App extends Thread {
 		@Override
 		public void channelInactive(ChannelHandlerContext ctx) throws Exception {
 			LOGGER.error("{}-channelInactive", getType(), ctx.channel().remoteAddress());
+			app.client.disconnect(ctx, uuid, host, port);
 		}
 
 		@Override
@@ -223,9 +226,11 @@ public class App extends Thread {
 
 	public static String jarPath;
 
+	private static App app;
+
 	public static void main(String[] args) {
 		try {
-			App app = new App();
+			app = new App();
 			System.out.println("App.main():" + jarPath);
 			app.init();
 			app.start();
