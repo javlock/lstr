@@ -16,10 +16,17 @@ import lombok.Setter;
 public class AppInfo implements Serializable {
 	private static final long serialVersionUID = -687125762693928112L;
 	private static final transient Logger LOGGER = LoggerFactory.getLogger("AppInfo");
-
 	private @Getter @Setter @DatabaseField(id = true) String uuid;
 
 	private @Getter CopyOnWriteArrayList<Addr> addrs = new CopyOnWriteArrayList<>();
+
+	public AppInfo() {
+
+	}
+
+	public AppInfo(String id) {
+		uuid = id;
+	}
 
 	public boolean isConnected() {
 		for (Addr addr : addrs) {
