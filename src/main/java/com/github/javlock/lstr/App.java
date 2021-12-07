@@ -270,8 +270,8 @@ public class App extends Thread {
 			builder.append("HiddenServiceDir ").append(TORSERVICEDIR.getAbsolutePath()).append('\n');
 			builder.append("HiddenServicePort 4001 127.0.0.1:" + soPort).append('\n');
 
+			builder.append("SOCKSPort ").append(soPort).append('\n');
 			if (!TORRC.exists()) {
-				builder.append("SOCKSPort ").append(soPort).append('\n');
 				Files.createFile(TORRC.toPath());
 			} else {
 				List<String> lines = Files.readAllLines(TORRC.toPath(), StandardCharsets.UTF_8);
@@ -316,8 +316,8 @@ public class App extends Thread {
 
 					@Override
 					public void appendOutput(String line) throws IOException {
+						LOGGER.info(line);
 						if (line.contains("Bootstrapped 100%")) {
-							LOGGER.info(line);
 							String domain = Files.readString(TORSERVICEHOSTNAMFILE.toPath(), StandardCharsets.UTF_8);
 							app.torServiceHost(domain);
 						}
