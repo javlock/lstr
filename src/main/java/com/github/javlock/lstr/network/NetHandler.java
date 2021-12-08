@@ -5,7 +5,6 @@ import java.util.Map.Entry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.javlock.lstr.App;
 import com.github.javlock.lstr.AppHeader;
 import com.github.javlock.lstr.PingPacket;
 import com.github.javlock.lstr.data.AppInfo;
@@ -27,7 +26,6 @@ public class NetHandler extends ChannelDuplexHandler {
 
 	protected static final Logger LOGGER = LoggerFactory.getLogger("NetHandler");
 
-	private @Getter @Setter App app;
 	private @Getter @Setter HandlerType type = HandlerType.NA;
 
 	protected @Getter @Setter String uuid;
@@ -50,7 +48,15 @@ public class NetHandler extends ChannelDuplexHandler {
 						ChannelFuture val = entry.getValue();
 
 						if (!(val instanceof ChannelFutureDummy)) {
-							LOGGER.info("{}", val.channel().writeAndFlush(pingPacket));
+							try {
+								ChannelFuture result = val.channel().writeAndFlush(pingPacket).await();
+								if (!result.isSuccess()) {
+									Throwable cause = result.cause();
+									LOGGER.error("cause:", cause);
+								}
+							} catch (InterruptedException e) {
+								e.printStackTrace();
+							}
 						}
 					}
 					try {
@@ -67,7 +73,7 @@ public class NetHandler extends ChannelDuplexHandler {
 	@Override
 	public void channelInactive(ChannelHandlerContext ctx) throws Exception {
 		LOGGER.info("{}-channelInactive", getType(), ctx.channel().remoteAddress());
-		app.client.disconnect(ctx, uuid, host, port);
+		AppHeader.app.client.disconnect(ctx, uuid, host, port);
 	}
 
 	@Override
@@ -89,7 +95,10 @@ public class NetHandler extends ChannelDuplexHandler {
 				System.err.println(2);
 			}
 
-			app.torBootstrapDomain(uuid + ":" + host + ":" + port);
+			AppInfo info = AppHeader.connectionInfoMap.computeIfAbsent(uuid, v -> new AppInfo(uuid));
+			info.setHost(host);
+			info.setPort(port);
+			AppHeader.app.dataBase.saveAppInfo(info);
 			return;
 		}
 		if (msg instanceof PingPacket) {

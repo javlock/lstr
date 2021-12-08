@@ -18,9 +18,9 @@ import com.j256.ormlite.table.TableUtils;
 public class DataBase {
 	private static final Logger LOGGER = LoggerFactory.getLogger("DataBase");
 
-	ConnectionSource connectionSource;
-	private Dao<AppInfo, ?> appInfoDao;// FIXME id Type
+	private ConnectionSource connectionSource;
 
+	private Dao<AppInfo, String> appInfoDao;
 	private Dao<AppConfig, String> configDao;
 
 	private void createDAOs() throws SQLException {
@@ -42,10 +42,40 @@ public class DataBase {
 		createSource();
 		createDAOs();
 		createTables();
-		if (configDao.countOf() == 0) {
+		if (configDao.countOf() == 0) {// create
 			configDao.create(new AppConfig());
 		} else {// load
-			configDao.create(AppHeader.config);
+			for (AppConfig config : configDao) {
+				if (config != null) {
+					AppHeader.config = config;
+					break;
+				}
+			}
+		}
+	}
+
+	public void saveAppInfo(AppInfo appInfo) throws SQLException {
+		String id = appInfo.getUuid();
+		if (appInfoDao.idExists(id)) {// update
+			AppInfo infoFromDB = appInfoDao.queryForId(id);
+			boolean needUpdate = false;
+
+			if (infoFromDB.getPort() != appInfo.getPort()) {
+				infoFromDB.setPort(appInfo.getPort());
+				needUpdate = true;
+			}
+
+			if (appInfo.getUsername() != null
+					&& (infoFromDB.getUsername() == null || infoFromDB.getUsername().equals(appInfo.getUsername()))) {
+				infoFromDB.setUsername(appInfo.getUsername());
+				needUpdate = true;
+			}
+
+			if (needUpdate) {
+				appInfoDao.update(infoFromDB);
+			}
+		} else {// create
+			appInfoDao.create(appInfo);
 		}
 	}
 

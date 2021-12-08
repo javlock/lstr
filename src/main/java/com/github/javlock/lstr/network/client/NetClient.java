@@ -31,31 +31,16 @@ import io.netty.resolver.NoopAddressResolverGroup;
 
 public class NetClient extends Thread {
 	public class NetClientConnector extends Thread {
-		public void appendDomain(String onionDomain) {
-			String[] ar = onionDomain.split(":");
-			String uuid = ar[0];
-			String host = ar[1];
-			int port = 4001;
-			if (ar.length == 3) {
-				port = Integer.parseInt(ar[2]);
-			}
-
-			AppInfo info = AppHeader.connectionInfoMap.computeIfAbsent(uuid, v -> new AppInfo(uuid));
-			info.setHost(host);
-			info.setPort(port);
-		}
 
 		private boolean connect(AppInfo appInfo) {
 			String uuid = appInfo.getUuid();
 			String host = appInfo.getHost();
 			int port = appInfo.getPort();
 
-			ChannelFuture future = dummy;
-
 			if (AppHeader.connected.containsKey(appInfo)) {
 				return true;
 			} else {
-				AppHeader.connected.put(appInfo, future);
+				AppHeader.connected.put(appInfo, dummy);
 			}
 
 			Bootstrap b = new Bootstrap();
@@ -81,7 +66,6 @@ public class NetClient extends Thread {
 								// core
 
 								NetClientHandler handler = new NetClientHandler();
-								handler.setApp(app);
 								handler.setUuid(uuid);
 								handler.setHost(host);
 								handler.setPort(port);
@@ -93,7 +77,7 @@ public class NetClient extends Thread {
 						}
 					});
 
-			future = b.connect(host, port).awaitUninterruptibly();
+			ChannelFuture future = b.connect(host, port).awaitUninterruptibly();
 			boolean result = future.isSuccess();
 			LOGGER.info("connection to {}:{} isSuccess?:{}", host, port, result);
 			if (result) {
@@ -106,9 +90,16 @@ public class NetClient extends Thread {
 				packet.setPort(4001);
 				future.channel().writeAndFlush(packet);
 			} else {
-				System.err.println(future);
+				LOGGER.error("{}", future);
 				AppHeader.connected.remove(appInfo);
 				gr.shutdownGracefully();
+			}
+
+			LOGGER.warn("SIZE:{}", AppHeader.connected.size());
+			for (Entry<AppInfo, ChannelFuture> entry : AppHeader.connected.entrySet()) {
+				AppInfo key = entry.getKey();
+				ChannelFuture val = entry.getValue();
+				LOGGER.warn("[{}]:[{}]", key, val);
 			}
 
 			return result;
@@ -134,7 +125,7 @@ public class NetClient extends Thread {
 							if (connect(appInfo)) {
 								connected = true;
 								break connectedLabel;
-							} // TODO NOT CONNECTED
+							}
 						} else {
 							LOGGER.info("!connected ELSE");
 						}

@@ -6,6 +6,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.github.javlock.lstr.data.AppInfo;
 import com.github.javlock.lstr.data.configs.AppConfig;
+import com.github.javlock.lstr.gui.AppGui;
 
 import io.netty.channel.ChannelFuture;
 
@@ -16,6 +17,7 @@ public class AppHeader {
 	private static final File CONFIGFILE = new File(DIR, "config.yaml");
 	public static String jarPath;
 	public static App app;
+	public static final AppGui GUI = new AppGui();
 
 	static {
 		try {

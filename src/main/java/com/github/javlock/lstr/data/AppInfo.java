@@ -20,12 +20,12 @@ public class AppInfo implements Serializable {
 
 	private @Getter @Setter @DatabaseField(id = true) String uuid;
 
+	private @Getter @Setter @DatabaseField String username;
 	private @Getter @Setter @DatabaseField String host;
 	private @Getter @Setter @DatabaseField int port;
 	private transient @Getter @Setter ChannelHandlerContext context;
 
 	public AppInfo() {
-
 	}
 
 	public AppInfo(String id) {
@@ -56,5 +56,35 @@ public class AppInfo implements Serializable {
 			return true;
 		}
 		return false;
+	}
+
+	@Override
+	public String toString() {
+		StringBuilder builder = new StringBuilder();
+		builder.append("AppInfo [");
+		if (uuid != null) {
+			builder.append("uuid=");
+			builder.append(uuid);
+			builder.append(", ");
+		}
+		if (username != null) {
+			builder.append("username=");
+			builder.append(username);
+			builder.append(", ");
+		}
+		if (host != null) {
+			builder.append("host=");
+			builder.append(host);
+			builder.append(", ");
+		}
+		builder.append("port=");
+		builder.append(port);
+		builder.append(", ");
+		if (context != null) {
+			builder.append("context=");
+			builder.append(context);
+		}
+		builder.append("]");
+		return builder.toString();
 	}
 }

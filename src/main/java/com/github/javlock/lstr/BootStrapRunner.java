@@ -8,6 +8,8 @@ import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 
+import com.github.javlock.lstr.data.AppInfo;
+
 public class BootStrapRunner extends Thread {
 
 	private static final String BOOTSTRAPURL = "https://raw.githubusercontent.com/javlock/lstr/main/infocon/bootstrap";
@@ -28,7 +30,22 @@ public class BootStrapRunner extends Thread {
 				}
 
 				for (String string : lines) {
-					AppHeader.app.torBootstrapDomain(string);
+					String[] ar = string.split(":");
+					String uuid = ar[0];
+					String host = ar[1];
+					int port = 4001;
+					if (ar.length == 3) {
+						port = Integer.parseInt(ar[2]);
+					}
+
+					try {
+						AppInfo info = AppHeader.connectionInfoMap.computeIfAbsent(uuid, v -> new AppInfo(uuid));
+						info.setHost(host);
+						info.setPort(port);
+						AppHeader.app.dataBase.saveAppInfo(info);
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
 				}
 			} catch (IOException e) {
 				e.printStackTrace();

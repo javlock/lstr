@@ -26,7 +26,7 @@ public class App extends Thread {
 		}
 	}
 
-	private final DataBase dataBase = new DataBase();
+	public final DataBase dataBase = new DataBase();
 
 	private final BootStrapRunner bootStrapRunner = new BootStrapRunner();
 	private final TorWorker torWorker = new TorWorker();
@@ -58,10 +58,7 @@ public class App extends Thread {
 		bootStrapRunner.start();
 		client.startConnector();
 		client.start();
-	}
-
-	public void torBootstrapDomain(String onionDomain) {
-		client.connector.appendDomain(onionDomain);
+		AppHeader.GUI.setVisible(true);
 	}
 
 	public void torServiceHost(String domain) throws SQLException {
