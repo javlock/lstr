@@ -1,15 +1,19 @@
-package com.github.javlock.lstr;
+package com.github.javlock.lstr.network.client;
 
 import java.net.InetSocketAddress;
 import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.javlock.lstr.App.NetClientHandler;
+import com.github.javlock.lstr.App;
+import com.github.javlock.lstr.AppHeader;
 import com.github.javlock.lstr.data.AppInfo;
 import com.github.javlock.lstr.data.dummy.ChannelFutureDummy;
+import com.github.javlock.lstr.data.network.InitSessionPacket;
+import com.github.javlock.lstr.data.network.InitSessionPacket.FromT;
+import com.github.javlock.lstr.data.network.Packet;
+import com.github.javlock.lstr.network.client.handler.NetClientHandler;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.ChannelFuture;
@@ -25,8 +29,8 @@ import io.netty.handler.codec.serialization.ObjectEncoder;
 import io.netty.handler.proxy.Socks4ProxyHandler;
 import io.netty.resolver.NoopAddressResolverGroup;
 
-public class NetClient {
-	class NetClientConnector extends Thread {
+public class NetClient extends Thread {
+	public class NetClientConnector extends Thread {
 		public void appendDomain(String onionDomain) {
 			String[] ar = onionDomain.split(":");
 			String uuid = ar[0];
@@ -36,21 +40,22 @@ public class NetClient {
 				port = Integer.parseInt(ar[2]);
 			}
 
-			AppInfo info = connectionInfoMap.computeIfAbsent(uuid, v -> new AppInfo(uuid));
+			AppInfo info = AppHeader.connectionInfoMap.computeIfAbsent(uuid, v -> new AppInfo(uuid));
 			info.setHost(host);
 			info.setPort(port);
 		}
 
 		private boolean connect(AppInfo appInfo) {
+			String uuid = appInfo.getUuid();
 			String host = appInfo.getHost();
 			int port = appInfo.getPort();
 
 			ChannelFuture future = dummy;
 
-			if (connected.containsKey(appInfo)) {
+			if (AppHeader.connected.containsKey(appInfo)) {
 				return true;
 			} else {
-				connected.put(appInfo, future);
+				AppHeader.connected.put(appInfo, future);
 			}
 
 			Bootstrap b = new Bootstrap();
@@ -66,7 +71,7 @@ public class NetClient {
 								ChannelPipeline p = ch.pipeline();
 
 								String proxyHost = "127.0.0.1";
-								int proxyPort = app.config.torConfig.socksPort;
+								int proxyPort = AppHeader.config.getTorSocksPort();
 								// proxy
 								p.addLast(new Socks4ProxyHandler(new InetSocketAddress(proxyHost, proxyPort)));
 								// objects
@@ -74,7 +79,13 @@ public class NetClient {
 										ClassResolvers.softCachingConcurrentResolver(Packet.class.getClassLoader())));
 								p.addLast(new ObjectEncoder());
 								// core
-								p.addLast(new NetClientHandler(appInfo.getUuid(), host, port));
+
+								NetClientHandler handler = new NetClientHandler();
+								handler.setApp(app);
+								handler.setUuid(uuid);
+								handler.setHost(host);
+								handler.setPort(port);
+								p.addLast(handler);
 
 							} catch (Exception e) {
 								e.printStackTrace();
@@ -86,10 +97,17 @@ public class NetClient {
 			boolean result = future.isSuccess();
 			LOGGER.info("connection to {}:{} isSuccess?:{}", host, port, result);
 			if (result) {
-				connected.replace(appInfo, dummy, future);
+
+				AppHeader.connected.replace(appInfo, dummy, future);
+				InitSessionPacket packet = new InitSessionPacket();
+				packet.setFrom(FromT.CLIENT);
+				packet.setUuid(AppHeader.config.getUuid());
+				packet.setHost(AppHeader.config.getTorDomain());
+				packet.setPort(4001);
+				future.channel().writeAndFlush(packet);
 			} else {
 				System.err.println(future);
-				connected.remove(appInfo);
+				AppHeader.connected.remove(appInfo);
 				gr.shutdownGracefully();
 			}
 
@@ -102,7 +120,7 @@ public class NetClient {
 
 			while (app.active) { // loop
 
-				for (Entry<String, AppInfo> entry : connectionInfoMap.entrySet()) {
+				for (Entry<String, AppInfo> entry : AppHeader.connectionInfoMap.entrySet()) {
 					String uuid = entry.getKey();
 					AppInfo appInfo = entry.getValue();
 
@@ -134,10 +152,8 @@ public class NetClient {
 	private static final Logger LOGGER = LoggerFactory.getLogger("NetClient");
 
 	ChannelFutureDummy dummy = new ChannelFutureDummy();
-	private final ConcurrentHashMap<String, AppInfo> connectionInfoMap = new ConcurrentHashMap<>();;
-	private final ConcurrentHashMap<AppInfo, ChannelFuture> connected = new ConcurrentHashMap<>();
 
-	final NetClientConnector connector = new NetClientConnector();
+	public final NetClientConnector connector = new NetClientConnector();
 
 	private App app;
 
@@ -147,19 +163,25 @@ public class NetClient {
 
 	public void disconnect(ChannelHandlerContext ctx, String uuid, String host, int port) {
 		LOGGER.info("id:{} host:{} port:{}", uuid, host, port);
-		LOGGER.info("connected:{}", connected.size());
-		for (Entry<AppInfo, ChannelFuture> entry : connected.entrySet()) {
+		LOGGER.info("connected:{}", AppHeader.connected.size());
+		for (Entry<AppInfo, ChannelFuture> entry : AppHeader.connected.entrySet()) {
 			AppInfo ent = entry.getKey();
 			ChannelFuture val = entry.getValue();
 
 			if (host != null) {
 				if (ent.getHost().equals(host)) {
-					connected.remove(ent, val);
+					AppHeader.connected.remove(ent, val);
 				}
 			}
 
 		}
-		LOGGER.info("connected after:{}", connected.size());
+		LOGGER.info("connected after:{}", AppHeader.connected.size());
+	}
+
+	@Override
+	public void run() {
+		Thread.currentThread().setName("NetClient");
+
 	}
 
 	public void startConnector() {
