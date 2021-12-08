@@ -1,4 +1,4 @@
-package com.github.javlock.lstr;
+package com.github.javlock.lstr.gui;
 
 import java.awt.BorderLayout;
 

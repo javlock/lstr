@@ -9,6 +9,7 @@ import java.nio.file.LinkOption;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.PosixFilePermission;
+import java.sql.SQLException;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Optional;
@@ -20,17 +21,16 @@ import org.apache.commons.lang3.SystemUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.javlock.lstr.App;
-import com.github.javlock.lstr.ExecutorMaster;
-import com.github.javlock.lstr.ExecutorMasterOutputListener;
+import com.github.javlock.lstr.AppHeader;
+import com.github.javlock.lstr.executor.ExecutorMaster;
+import com.github.javlock.lstr.executor.ExecutorMasterOutputListener;
 
 public class TorWorker extends Thread {
 	private static final Logger LOGGER = LoggerFactory.getLogger("TorWorker");
 
 	private static final String TORBIN = "torbin/";
 
-	private App app;
-	private File TORBINDIR = new File(new File(app.DIR, TORBIN).getAbsolutePath());
+	private File TORBINDIR = new File(new File(AppHeader.DIR, TORBIN).getAbsolutePath());
 	private File TORRC = new File(TORBINDIR, "torrc");
 	private File TORDATADIR = new File(TORBINDIR, "data");
 	private File TORSERVICEDIR = new File(TORDATADIR, "service");
@@ -44,12 +44,9 @@ public class TorWorker extends Thread {
 	String nameBin = "tor";
 	private File torBin;
 
-	public TorWorker(App app) {
-		this.app = app;
-	}
-
-	private void createConfig(App app) throws IOException {
-		int soPort = app.config.torConfig.socksPort;
+	private void createConfig() throws IOException {
+		int torSocksPort = AppHeader.config.getTorSocksPort();
+		int serverPort = AppHeader.config.getServerPort();
 
 		StringBuilder builder = new StringBuilder();
 
@@ -57,9 +54,9 @@ public class TorWorker extends Thread {
 		builder.append("DataDirectory ").append(TORDATADIR.getAbsolutePath()).append('\n');
 
 		builder.append("HiddenServiceDir ").append(TORSERVICEDIR.getAbsolutePath()).append('\n');
-		builder.append("HiddenServicePort 4001 127.0.0.1:" + app.config.serverPort).append('\n');
+		builder.append("HiddenServicePort 4001 127.0.0.1:" + serverPort).append('\n');
 
-		builder.append("SOCKSPort ").append(soPort).append('\n');
+		builder.append("SOCKSPort ").append(torSocksPort).append('\n');
 		if (!TORRC.exists()) {
 			Files.createFile(TORRC.toPath());
 		} else {
@@ -86,9 +83,9 @@ public class TorWorker extends Thread {
 		throw new UnsupportedOperationException("OS not : WINDOWS OR LINUX");
 	}
 
-	public void init(App app) throws IOException {
+	public void init() throws IOException {
 		unpack();
-		createConfig(app);
+		createConfig();
 	}
 
 	@Override
@@ -97,18 +94,20 @@ public class TorWorker extends Thread {
 
 		try {
 			int statusTor = new ExecutorMaster().setOutputListener(new ExecutorMasterOutputListener() {
-
 				@Override
 				public void appendInput(String line) {
 					LOGGER.info(line);
 				}
 
 				@Override
-				public void appendOutput(String line) throws IOException {
+				public void appendOutput(String line) throws IOException, SQLException {
 					LOGGER.info(line);
 					if (line.contains("Bootstrapped 100%")) {
-						String domain = Files.readString(TORSERVICEHOSTNAMFILE.toPath(), StandardCharsets.UTF_8);
-						app.torServiceHost(domain);
+						String domain = Files.readString(TORSERVICEHOSTNAMFILE.toPath(), StandardCharsets.UTF_8)
+								.replaceAll("\n", "");
+						LOGGER.info("[{}]", domain);
+						AppHeader.app.torServiceHost(domain);
+						AppHeader.app.torStarted = true;
 					}
 				}
 
@@ -127,9 +126,9 @@ public class TorWorker extends Thread {
 				}
 			}).parrentCommand(torBin.getAbsolutePath()).arg("-f " + TORRC.getAbsolutePath()).dir(TORBINDIR).call();
 			LOGGER.info("tor stop with status:{}", statusTor);
-		} catch (IOException | InterruptedException e) {
+		} catch (Exception e) {
 			e.printStackTrace();
-			app.active = false;
+			AppHeader.app.active = false;
 		}
 
 	}
@@ -137,7 +136,7 @@ public class TorWorker extends Thread {
 	private void unpack() throws IOException {
 		filesDirName = filesDirName + osName + "." + arch;
 		LOGGER.info("----------UNZIP-------------");
-		try (ZipFile file = new ZipFile(App.jarPath)) {
+		try (ZipFile file = new ZipFile(AppHeader.jarPath)) {
 			// Get file entries
 			Enumeration<? extends ZipEntry> entries = file.entries();
 			while (entries.hasMoreElements()) {
@@ -145,7 +144,7 @@ public class TorWorker extends Thread {
 				String entryName = entry.getName();
 
 				if (entryName.startsWith(TORBIN + osName + "." + arch)) {
-					File f = new File(app.DIR, entryName);
+					File f = new File(AppHeader.DIR, entryName);
 
 					LOGGER.info("unpack():{}", entryName);
 
