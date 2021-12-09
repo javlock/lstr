@@ -6,7 +6,6 @@ import java.util.Map.Entry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.javlock.lstr.App;
 import com.github.javlock.lstr.AppHeader;
 import com.github.javlock.lstr.data.AppInfo;
 import com.github.javlock.lstr.data.dummy.ChannelFutureDummy;
@@ -31,31 +30,15 @@ import io.netty.resolver.NoopAddressResolverGroup;
 
 public class NetClient extends Thread {
 	public class NetClientConnector extends Thread {
-		public void appendDomain(String onionDomain) {
-			String[] ar = onionDomain.split(":");
-			String uuid = ar[0];
-			String host = ar[1];
-			int port = 4001;
-			if (ar.length == 3) {
-				port = Integer.parseInt(ar[2]);
-			}
-
-			AppInfo info = AppHeader.connectionInfoMap.computeIfAbsent(uuid, v -> new AppInfo(uuid));
-			info.setHost(host);
-			info.setPort(port);
-		}
 
 		private boolean connect(AppInfo appInfo) {
-			String uuid = appInfo.getUuid();
 			String host = appInfo.getHost();
 			int port = appInfo.getPort();
 
-			ChannelFuture future = dummy;
-
-			if (AppHeader.connected.containsKey(appInfo)) {
+			if (appInfo.isConnected()) {
 				return true;
 			} else {
-				AppHeader.connected.put(appInfo, future);
+				appInfo.setChannelFuture(dummy);
 			}
 
 			Bootstrap b = new Bootstrap();
@@ -71,7 +54,7 @@ public class NetClient extends Thread {
 								ChannelPipeline p = ch.pipeline();
 
 								String proxyHost = "127.0.0.1";
-								int proxyPort = AppHeader.config.getTorSocksPort();
+								int proxyPort = AppHeader.getConfig().getTorSocksPort();
 								// proxy
 								p.addLast(new Socks4ProxyHandler(new InetSocketAddress(proxyHost, proxyPort)));
 								// objects
@@ -81,8 +64,6 @@ public class NetClient extends Thread {
 								// core
 
 								NetClientHandler handler = new NetClientHandler();
-								handler.setApp(app);
-								handler.setUuid(uuid);
 								handler.setHost(host);
 								handler.setPort(port);
 								p.addLast(handler);
@@ -93,23 +74,25 @@ public class NetClient extends Thread {
 						}
 					});
 
-			future = b.connect(host, port).awaitUninterruptibly();
+			ChannelFuture future = b.connect(host, port).awaitUninterruptibly();
 			boolean result = future.isSuccess();
 			LOGGER.info("connection to {}:{} isSuccess?:{}", host, port, result);
-			if (result) {
 
-				AppHeader.connected.replace(appInfo, dummy, future);
+			if (result) {
+				appInfo.setChannelFuture(future);
+
 				InitSessionPacket packet = new InitSessionPacket();
 				packet.setFrom(FromT.CLIENT);
-				packet.setUuid(AppHeader.config.getUuid());
-				packet.setHost(AppHeader.config.getTorDomain());
+				packet.setHost(AppHeader.getConfig().getTorDomain());
 				packet.setPort(4001);
 				future.channel().writeAndFlush(packet);
 			} else {
-				System.err.println(future);
-				AppHeader.connected.remove(appInfo);
+				LOGGER.error("{}", future);
+				appInfo.setChannelFuture(null);
 				gr.shutdownGracefully();
 			}
+
+			LOGGER.warn("SIZE:{}", AppHeader.connectionInfoMap.values().stream().filter(AppInfo::isConnected).count());
 
 			return result;
 		}
@@ -118,7 +101,7 @@ public class NetClient extends Thread {
 		public void run() {
 			Thread.currentThread().setName("NetClientConnector");
 
-			while (app.active) { // loop
+			while (AppHeader.app.active) { // loop
 
 				for (Entry<String, AppInfo> entry : AppHeader.connectionInfoMap.entrySet()) {
 					String uuid = entry.getKey();
@@ -128,17 +111,7 @@ public class NetClient extends Thread {
 						LOGGER.info("isConnected");
 						continue;
 					}
-					boolean connected = false;
-					connectedLabel: {
-						if (!connected) {
-							if (connect(appInfo)) {
-								connected = true;
-								break connectedLabel;
-							} // TODO NOT CONNECTED
-						} else {
-							LOGGER.info("!connected ELSE");
-						}
-					}
+					connect(appInfo);
 				}
 				try {
 					Thread.sleep(3000);
@@ -155,27 +128,28 @@ public class NetClient extends Thread {
 
 	public final NetClientConnector connector = new NetClientConnector();
 
-	private App app;
+	public void disconnect(ChannelHandlerContext ctx, String host, int port) {
+		LOGGER.info("host:{} port:{}", host, port);
 
-	public NetClient(App app) {
-		this.app = app;
-	}
+		for (Entry<String, AppInfo> entry : AppHeader.connectionInfoMap.entrySet()) {
+			String entryUUID = entry.getKey();
+			AppInfo entryVal = entry.getValue();
 
-	public void disconnect(ChannelHandlerContext ctx, String uuid, String host, int port) {
-		LOGGER.info("id:{} host:{} port:{}", uuid, host, port);
-		LOGGER.info("connected:{}", AppHeader.connected.size());
-		for (Entry<AppInfo, ChannelFuture> entry : AppHeader.connected.entrySet()) {
-			AppInfo ent = entry.getKey();
-			ChannelFuture val = entry.getValue();
+			ChannelHandlerContext context = entryVal.getContext();
+			ChannelFuture channelFuture = entryVal.getChannelFuture();
 
-			if (host != null) {
-				if (ent.getHost().equals(host)) {
-					AppHeader.connected.remove(ent, val);
-				}
-			}
+			String entryHost = entryVal.getHost();
+			int entryPort = entryVal.getPort();
 
+			LOGGER.info("disconnect:{}", ctx == context);
+			// FIXME
+
+			/*
+			 * if (host != null && ent.getHost().equals(host) &&
+			 * val.channel().remoteAddress().equals(ctx.channel().remoteAddress())) {
+			 * AppHeader.connected.remove(ent, val); break; }
+			 */
 		}
-		LOGGER.info("connected after:{}", AppHeader.connected.size());
 	}
 
 	@Override
