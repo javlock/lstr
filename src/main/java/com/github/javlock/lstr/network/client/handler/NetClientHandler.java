@@ -7,8 +7,7 @@ public class NetClientHandler extends NetHandler {
 		setType(HandlerType.CLIENT);
 	}
 
-	public NetClientHandler(String uuid, String host, int port) {
-		this.uuid = uuid;
+	public NetClientHandler(String host, int port) {
 		this.host = host;
 		this.port = port;
 		setType(HandlerType.CLIENT);

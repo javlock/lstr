@@ -23,8 +23,14 @@ public class AppGui extends JFrame {
 	private static final DefaultListModel<AppInfo> messagesContactModel = new DefaultListModel<>();
 
 	ActionListener btnSendMessageListener = a -> {
-		System.out.println("AppGui.enclosing_method()");
+		if (messagesContactModel != null) {
+			System.out.println("AppGui.enclosing_method():" + messagesContactModel);
+		} else {
+			System.out.println("AppGui.enclosing_method(null)");
+		}
 	};
+
+	public AppInfo messagesSelectedAppInfo;
 
 	public AppGui() {
 		setSize(1300, 760);
@@ -71,6 +77,12 @@ public class AppGui extends JFrame {
 
 		JScrollPane logScrollPane = new JScrollPane();
 		tabbedPane.addTab("LOGS", null, logScrollPane, null);
+	}
+
+	public void receiveAppInfo(AppInfo appInfo) {
+		if (!messagesContactModel.contains(appInfo)) {
+			messagesContactModel.addElement(appInfo);
+		}
 	}
 
 }

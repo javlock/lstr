@@ -6,6 +6,7 @@ import java.sql.SQLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.github.javlock.lstr.data.configs.AppConfig;
 import com.github.javlock.lstr.db.DataBase;
 import com.github.javlock.lstr.network.client.NetClient;
 import com.github.javlock.lstr.network.server.NetServer;
@@ -30,7 +31,7 @@ public class App extends Thread {
 
 	private final BootStrapRunner bootStrapRunner = new BootStrapRunner();
 	private final TorWorker torWorker = new TorWorker();
-	public final NetClient client = new NetClient(this);
+	public final NetClient client = new NetClient();
 	private final NetServer server = new NetServer();
 
 	public boolean active = true;
@@ -45,6 +46,7 @@ public class App extends Thread {
 
 	@Override
 	public void run() {
+		dataBase.start();
 		server.bind();
 		torWorker.start();
 		while (!torStarted) {
@@ -63,9 +65,22 @@ public class App extends Thread {
 
 	public void torServiceHost(String domain) throws SQLException {
 		LOGGER.info("TOR DOMAIN IS {}", domain);
-		boolean needWrite = AppHeader.config.getTorDomain() == null || !AppHeader.config.getTorDomain().equals(domain);
-		AppHeader.config.setTorDomain(domain);
+		boolean needWrite = AppHeader.getConfig().getTorDomain() == null
+				|| !AppHeader.getConfig().getTorDomain().equals(domain);
+		AppHeader.getConfig().setTorDomain(domain);
 		if (needWrite) {
+			if (dataBase.configDao.countOf() == 0) {// create
+				AppConfig newConfig = new AppConfig();
+				newConfig.setTorDomain(domain);
+				dataBase.configDao.create(newConfig);
+			} else {// load
+				for (AppConfig config : dataBase.configDao) {
+					if (config != null) {
+						AppHeader.setConfig(config);
+						break;
+					}
+				}
+			}
 			dataBase.updateSettings();
 		}
 	}

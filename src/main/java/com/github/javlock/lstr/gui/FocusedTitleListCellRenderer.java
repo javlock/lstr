@@ -11,6 +11,7 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.border.TitledBorder;
 
+import com.github.javlock.lstr.AppHeader;
 import com.github.javlock.lstr.data.AppInfo;
 
 public class FocusedTitleListCellRenderer implements ListCellRenderer<AppInfo> {
@@ -24,7 +25,21 @@ public class FocusedTitleListCellRenderer implements ListCellRenderer<AppInfo> {
 
 		JLabel renderer = (JLabel) defaultRenderer.getListCellRendererComponent(list, value, index, isSelected,
 				cellHasFocus);
-		renderer.setBorder(cellHasFocus ? focusBorder : noFocusBorder);
+
+		JLabel label = new JLabel();
+
+		if (value.getUsername() != null) {
+			renderer.setText(value.getUsername());
+			label.setText(value.getUsername());
+		} else {
+			renderer.setText(value.getHost());
+			label.setText(value.getHost());
+		}
+		if (isSelected) {
+			AppHeader.GUI.messagesSelectedAppInfo = value;
+		}
+
+		// renderer.setBorder(cellHasFocus ? focusBorder : noFocusBorder);
 
 		return renderer;
 	}

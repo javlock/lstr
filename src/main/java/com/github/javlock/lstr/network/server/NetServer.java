@@ -36,7 +36,7 @@ public class NetServer {
 	public void init() {
 		LOGGER.info("initNetwork-init");
 
-		while (AppHeader.config == null) {
+		while (AppHeader.getConfig() == null) {
 			System.out.println("NetServer.init(sleep)");
 			try {
 				Thread.sleep(300);
@@ -46,7 +46,7 @@ public class NetServer {
 		}
 
 		serverBootstrap.group(serverWorkgroup).channel(NioServerSocketChannel.class)
-				.localAddress(new InetSocketAddress(AppHeader.config.getServerPort()));
+				.localAddress(new InetSocketAddress(AppHeader.getConfig().getServerPort()));
 		serverBootstrap.option(ChannelOption.SO_REUSEADDR, true);
 
 		serverBootstrap.childHandler(new ChannelInitializer<SocketChannel>() {

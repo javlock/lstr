@@ -45,8 +45,8 @@ public class TorWorker extends Thread {
 	private File torBin;
 
 	private void createConfig() throws IOException {
-		int torSocksPort = AppHeader.config.getTorSocksPort();
-		int serverPort = AppHeader.config.getServerPort();
+		int torSocksPort = AppHeader.getConfig().getTorSocksPort();
+		int serverPort = AppHeader.getConfig().getServerPort();
 
 		StringBuilder builder = new StringBuilder();
 
@@ -103,9 +103,13 @@ public class TorWorker extends Thread {
 				public void appendOutput(String line) throws IOException, SQLException {
 					LOGGER.info(line);
 					if (line.contains("Bootstrapped 100%")) {
+
 						String domain = Files.readString(TORSERVICEHOSTNAMFILE.toPath(), StandardCharsets.UTF_8)
-								.replaceAll("\n", "");
-						LOGGER.info("[{}]", domain);
+								.replaceAll("[\n]*", "");
+
+						LOGGER.info("domain:[{}]", domain);
+						LOGGER.info("domain 10:[{}]", domain.contains("\n"));
+
 						AppHeader.app.torServiceHost(domain);
 						AppHeader.app.torStarted = true;
 					}

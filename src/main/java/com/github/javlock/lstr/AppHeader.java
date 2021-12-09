@@ -8,16 +8,17 @@ import com.github.javlock.lstr.data.AppInfo;
 import com.github.javlock.lstr.data.configs.AppConfig;
 import com.github.javlock.lstr.gui.AppGui;
 
-import io.netty.channel.ChannelFuture;
+import lombok.Getter;
+import lombok.Setter;
 
 public class AppHeader {
-	public static AppConfig config = new AppConfig();
+	public static App app;
+
+	public static final AppGui GUI = new AppGui();
+	private static @Getter @Setter AppConfig config = new AppConfig();
 
 	public static final File DIR = new File("App");
-	private static final File CONFIGFILE = new File(DIR, "config.yaml");
 	public static String jarPath;
-	public static App app;
-	public static final AppGui GUI = new AppGui();
 
 	static {
 		try {
@@ -26,11 +27,6 @@ public class AppHeader {
 			e.printStackTrace();
 		}
 	}
-	public final static ConcurrentHashMap<AppInfo, ChannelFuture> connected = new ConcurrentHashMap<>();;
-	public final static ConcurrentHashMap<String, AppInfo> connectionInfoMap = new ConcurrentHashMap<>();
+	public static final ConcurrentHashMap<String, AppInfo> connectionInfoMap = new ConcurrentHashMap<>();
 
-	/*
-	 * public static String uuid; public static int socksPort; public static String
-	 * domain; public static int serverPort;
-	 */
 }

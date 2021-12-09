@@ -1,14 +1,11 @@
 package com.github.javlock.lstr.network;
 
-import java.util.Map.Entry;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.github.javlock.lstr.AppHeader;
 import com.github.javlock.lstr.PingPacket;
 import com.github.javlock.lstr.data.AppInfo;
-import com.github.javlock.lstr.data.dummy.ChannelFutureDummy;
 import com.github.javlock.lstr.data.network.InitSessionPacket;
 import com.github.javlock.lstr.data.network.InitSessionPacket.FromT;
 
@@ -28,7 +25,6 @@ public class NetHandler extends ChannelDuplexHandler {
 
 	private @Getter @Setter HandlerType type = HandlerType.NA;
 
-	protected @Getter @Setter String uuid;
 	protected @Getter @Setter String host;
 	protected @Getter @Setter int port;
 
@@ -38,27 +34,20 @@ public class NetHandler extends ChannelDuplexHandler {
 	@Override
 	public void channelActive(ChannelHandlerContext ctx) throws Exception {
 		LOGGER.info("{}-channelActive", getType(), ctx.channel().remoteAddress());
-
 		if (getType().equals(HandlerType.SERVER)) {
 			pingPacket.setFrom(FromT.SERVER);
 			new Thread((Runnable) () -> {
 				while (pingActive) {
-					for (Entry<AppInfo, ChannelFuture> entry : AppHeader.connected.entrySet()) {
-						AppInfo ent = entry.getKey();
-						ChannelFuture val = entry.getValue();
-
-						if (!(val instanceof ChannelFutureDummy)) {
-							try {
-								ChannelFuture result = val.channel().writeAndFlush(pingPacket).await();
-								if (!result.isSuccess()) {
-									Throwable cause = result.cause();
-									LOGGER.error("cause:", cause);
-								}
-							} catch (InterruptedException e) {
-								e.printStackTrace();
-							}
+					try {
+						ChannelFuture result = ctx.channel().writeAndFlush(pingPacket).await();
+						if (!result.isSuccess()) {
+							Throwable cause = result.cause();
+							LOGGER.error("cause:", cause);
 						}
+					} catch (InterruptedException e1) {
+						e1.printStackTrace();
 					}
+
 					try {
 						Thread.sleep(10000);
 					} catch (InterruptedException e) {
@@ -73,14 +62,14 @@ public class NetHandler extends ChannelDuplexHandler {
 	@Override
 	public void channelInactive(ChannelHandlerContext ctx) throws Exception {
 		LOGGER.info("{}-channelInactive", getType(), ctx.channel().remoteAddress());
-		AppHeader.app.client.disconnect(ctx, uuid, host, port);
+		AppHeader.app.client.disconnect(ctx, host, port);
+		pingActive = false;
 	}
 
 	@Override
 	public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
 		if (msg instanceof InitSessionPacket) {
 			InitSessionPacket initSessionPacket = (InitSessionPacket) msg;
-			uuid = initSessionPacket.getUuid();
 			host = initSessionPacket.getHost();
 			port = initSessionPacket.getPort();
 
@@ -88,14 +77,13 @@ public class NetHandler extends ChannelDuplexHandler {
 			if (initSessionPacket.getFrom().equals(FromT.CLIENT)) {
 				InitSessionPacket packet = new InitSessionPacket();
 				packet.setFrom(FromT.SERVER);
-				packet.setUuid(AppHeader.config.getUuid());
-				packet.setHost(AppHeader.config.getTorDomain());
+				packet.setHost(AppHeader.getConfig().getTorDomain());
 				packet.setPort(4001);
 				ctx.writeAndFlush(packet);
 				System.err.println(2);
 			}
 
-			AppInfo info = AppHeader.connectionInfoMap.computeIfAbsent(uuid, v -> new AppInfo(uuid));
+			AppInfo info = AppHeader.connectionInfoMap.computeIfAbsent(host, v -> new AppInfo(host));
 			info.setHost(host);
 			info.setPort(port);
 			AppHeader.app.dataBase.saveAppInfo(info);
