@@ -29,19 +29,11 @@ public class BootStrapRunner extends Thread {
 					}
 				}
 
-				for (String string : lines) {
-					String[] ar = string.split(":");
-					String uuid = ar[0];
-					String host = ar[1];
-					int port = 4001;
-					if (ar.length == 3) {
-						port = Integer.parseInt(ar[2]);
-					}
-
+				for (String host : lines) {
 					try {
-						AppInfo info = AppHeader.connectionInfoMap.computeIfAbsent(uuid, v -> new AppInfo(uuid));
+						AppInfo info = AppHeader.connectionInfoMap.computeIfAbsent(host, v -> new AppInfo(host));
 						info.setHost(host);
-						info.setPort(port);
+						info.setPort(4001);
 						AppHeader.app.dataBase.saveAppInfo(info);
 					} catch (Exception e) {
 						e.printStackTrace();

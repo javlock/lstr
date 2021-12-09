@@ -6,7 +6,6 @@ import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.javlock.lstr.data.dummy.ChannelFutureDummy;
 import com.j256.ormlite.field.DatabaseField;
 import com.j256.ormlite.table.DatabaseTable;
 
@@ -24,8 +23,8 @@ public class AppInfo implements Serializable {
 	private @Getter @Setter @DatabaseField(id = true) String host;
 	private @Getter @Setter @DatabaseField int port;
 
-	private transient @Getter @Setter ChannelHandlerContext context;
-	private transient @Getter @Setter ChannelFuture channelFuture;
+	private transient @Getter @Setter ChannelHandlerContext context;// from handler
+	private transient @Getter @Setter ChannelFuture channelFuture;// for connect
 
 	public AppInfo() {
 	}
@@ -52,20 +51,25 @@ public class AppInfo implements Serializable {
 	}
 
 	public boolean isConnected() {
-		if (channelFuture instanceof ChannelFutureDummy) {
+		if (channelFuture != null) {
+			LOGGER.info("channelFuture [{}]", channelFuture);
+			LOGGER.info("context [{}]", context);
 			return true;
 		}
+
 		// FIXME
-		/*
-		 * if (channelFuture.channel().is) { }
-		 */
 
 		if (context != null) {
-			LOGGER.info("isActive {}", context.channel().isActive());
-			LOGGER.info("isOpen {}", context.channel().isOpen());
+			LOGGER.info("isActive [{}]", context.channel().isActive());
+			LOGGER.info("isOpen [{}]", context.channel().isOpen());
 			return true;
 		}
+
 		return false;
+	}
+
+	public boolean itsMe(String torDomain) {
+		return torDomain.equalsIgnoreCase(host);
 	}
 
 	@Override

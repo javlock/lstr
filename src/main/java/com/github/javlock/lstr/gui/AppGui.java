@@ -33,7 +33,7 @@ public class AppGui extends JFrame {
 	public AppInfo messagesSelectedAppInfo;
 
 	public AppGui() {
-		setSize(1300, 760);
+		setSize(600, 550);
 
 		JTabbedPane tabbedPane = new JTabbedPane(JTabbedPane.TOP);
 		getContentPane().add(tabbedPane, BorderLayout.CENTER);

@@ -16,7 +16,6 @@ import com.github.javlock.lstr.network.client.handler.NetClientHandler;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -34,6 +33,11 @@ public class NetClient extends Thread {
 		private boolean connect(AppInfo appInfo) {
 			String host = appInfo.getHost();
 			int port = appInfo.getPort();
+
+			if (appInfo.itsMe(AppHeader.getConfig().getTorDomain())) {
+				LOGGER.info("appInfo.itsMe");
+				return true;
+			}
 
 			if (appInfo.isConnected()) {
 				return true;
@@ -127,30 +131,6 @@ public class NetClient extends Thread {
 	ChannelFutureDummy dummy = new ChannelFutureDummy();
 
 	public final NetClientConnector connector = new NetClientConnector();
-
-	public void disconnect(ChannelHandlerContext ctx, String host, int port) {
-		LOGGER.info("host:{} port:{}", host, port);
-
-		for (Entry<String, AppInfo> entry : AppHeader.connectionInfoMap.entrySet()) {
-			String entryUUID = entry.getKey();
-			AppInfo entryVal = entry.getValue();
-
-			ChannelHandlerContext context = entryVal.getContext();
-			ChannelFuture channelFuture = entryVal.getChannelFuture();
-
-			String entryHost = entryVal.getHost();
-			int entryPort = entryVal.getPort();
-
-			LOGGER.info("disconnect:{}", ctx == context);
-			// FIXME
-
-			/*
-			 * if (host != null && ent.getHost().equals(host) &&
-			 * val.channel().remoteAddress().equals(ctx.channel().remoteAddress())) {
-			 * AppHeader.connected.remove(ent, val); break; }
-			 */
-		}
-	}
 
 	@Override
 	public void run() {

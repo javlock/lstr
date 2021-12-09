@@ -1,5 +1,7 @@
 package com.github.javlock.lstr.network;
 
+import java.util.Map.Entry;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,10 +33,13 @@ public class NetHandler extends ChannelDuplexHandler {
 	PingPacket pingPacket = new PingPacket();
 	boolean pingActive = true;
 
+	private AppInfo info;
+
 	@Override
 	public void channelActive(ChannelHandlerContext ctx) throws Exception {
 		LOGGER.info("{}-channelActive", getType(), ctx.channel().remoteAddress());
 		if (getType().equals(HandlerType.SERVER)) {
+
 			pingPacket.setFrom(FromT.SERVER);
 			new Thread((Runnable) () -> {
 				while (pingActive) {
@@ -62,7 +67,7 @@ public class NetHandler extends ChannelDuplexHandler {
 	@Override
 	public void channelInactive(ChannelHandlerContext ctx) throws Exception {
 		LOGGER.info("{}-channelInactive", getType(), ctx.channel().remoteAddress());
-		AppHeader.app.client.disconnect(ctx, host, port);
+		disconnect(ctx, info, host, port);
 		pingActive = false;
 	}
 
@@ -73,19 +78,21 @@ public class NetHandler extends ChannelDuplexHandler {
 			host = initSessionPacket.getHost();
 			port = initSessionPacket.getPort();
 
-			System.err.println(1);
 			if (initSessionPacket.getFrom().equals(FromT.CLIENT)) {
 				InitSessionPacket packet = new InitSessionPacket();
 				packet.setFrom(FromT.SERVER);
 				packet.setHost(AppHeader.getConfig().getTorDomain());
 				packet.setPort(4001);
 				ctx.writeAndFlush(packet);
-				System.err.println(2);
+				LOGGER.info("InitSessionPacket from client");
+			} else if (initSessionPacket.getFrom().equals(FromT.SERVER)) {
+				LOGGER.info("InitSessionPacket from server");
 			}
 
-			AppInfo info = AppHeader.connectionInfoMap.computeIfAbsent(host, v -> new AppInfo(host));
+			info = AppHeader.connectionInfoMap.computeIfAbsent(host, v -> new AppInfo(host));
 			info.setHost(host);
 			info.setPort(port);
+			info.setContext(ctx);
 			AppHeader.app.dataBase.saveAppInfo(info);
 			return;
 		}
@@ -99,6 +106,40 @@ public class NetHandler extends ChannelDuplexHandler {
 		}
 
 		LOGGER.info("{}-channelRead msg:[{}]", getType(), msg);
+	}
+
+	private void disconnect(ChannelHandlerContext ctx, AppInfo info2, String host2, int port2)
+			throws InterruptedException {
+
+		if (info2 != null) {
+			LOGGER.info("info2 != null: info2:{}", info2);
+			LOGGER.info("info2 != null: info2:HP:{} {}", host2, port2);
+		}
+
+		if (info2 != null && info2 == info) {
+			ctx.close().await();
+			info2.setContext(null);
+			if (info2.getChannelFuture() != null) {
+				info2.getChannelFuture().channel().close().await();
+				info2.setChannelFuture(null);
+			}
+		} else {
+
+			for (Entry<String, AppInfo> entry : AppHeader.connectionInfoMap.entrySet()) {
+				String entryUUID = entry.getKey();
+				AppInfo entryVal = entry.getValue();
+
+				ChannelHandlerContext context = entryVal.getContext();
+				ChannelFuture channelFuture = entryVal.getChannelFuture();
+
+				String entryHost = entryVal.getHost();
+				int entryPort = entryVal.getPort();
+
+				LOGGER.info("disconnect:{}", ctx == context);
+				// FIXME
+
+			}
+		}
 	}
 
 	@Override
