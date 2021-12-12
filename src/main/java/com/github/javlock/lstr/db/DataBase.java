@@ -29,6 +29,8 @@ import com.j256.ormlite.support.ConnectionSource;
 import com.j256.ormlite.table.TableUtils;
 
 public class DataBase extends Thread {
+	private static final String CONTACT2 = "contact2";
+	private static final String CONTACT1 = "contact1";
 	private static final Logger LOGGER = LoggerFactory.getLogger("DataBase");
 	private ConnectionSource connectionSource;
 
@@ -65,11 +67,11 @@ public class DataBase extends Thread {
 		QueryBuilder<EncryptKey, Integer> queryBuilder = keysDao.queryBuilder();
 		Where<EncryptKey, Integer> where = queryBuilder.where();
 		// 1
-		where.eq("contact1", contact.getHost()).and().eq("contact2", hostContact2)
+		where.eq(CONTACT1, contact.getHost()).and().eq(CONTACT2, hostContact2)
 				//
 				.or()
 				// 2
-				.eq("contact2", contact.getHost()).and().eq("contact1", hostContact2);
+				.eq(CONTACT2, contact.getHost()).and().eq(CONTACT1, hostContact2);
 
 		return queryBuilder.queryForFirst();
 	}
@@ -89,22 +91,16 @@ public class DataBase extends Thread {
 		}
 
 		for (Message message : messageDao) {
-
 			boolean forMe = message.getFrom().equals(myDomain) || message.getTo().equals(myDomain);
-			LOGGER.info("appInfoDao:domain:getMessageForMeAnd:forMe {}", forMe);
-
 			if (forMe) {
 				boolean fordomain = message.getFrom().equals(domain) || message.getTo().equals(domain);
 				if (fordomain) {
 
 					try {
-						if (message.getRawMsg() == null && message.getEncMsg() != null) {
-							message.decryptFor(myInfo);
-						}
+						message.repare(messageDao, myInfo, domainInfo);
 					} catch (InvalidKeyException | NoSuchAlgorithmException | InvalidKeySpecException
 							| IllegalBlockSizeException | BadPaddingException | InvalidAlgorithmParameterException
 							| NoSuchPaddingException | SQLException e) {
-						//
 						e.printStackTrace();
 					}
 
@@ -145,7 +141,7 @@ public class DataBase extends Thread {
 				if (AppHeader.getConfig().getTorDomain() != null) {
 					QueryBuilder<EncryptKey, Integer> queryBuilder = keysDao.queryBuilder();
 					Where<EncryptKey, Integer> where = queryBuilder.where();
-					where.eq("contact1", AppHeader.getConfig().getTorDomain()).and().eq("contact2",
+					where.eq(CONTACT1, AppHeader.getConfig().getTorDomain()).and().eq(CONTACT2,
 							AppHeader.getConfig().getTorDomain());
 
 					if (queryBuilder.countOf() == 0) {
@@ -162,7 +158,6 @@ public class DataBase extends Thread {
 			for (AppInfo appInfo : appInfoDao) {
 				String domain = appInfo.getHost();
 				try {
-					LOGGER.info("appInfoDao:domain:getMessageForMeAnd {}", domain);
 					getMessageForMeAnd(domain);
 				} catch (SQLException e) {
 					e.printStackTrace();
@@ -222,7 +217,7 @@ public class DataBase extends Thread {
 		if (AppHeader.getConfig().getTorDomain() != null) {
 			QueryBuilder<EncryptKey, Integer> queryBuilder = keysDao.queryBuilder();
 			Where<EncryptKey, Integer> where = queryBuilder.where();
-			where.eq("contact1", AppHeader.getConfig().getTorDomain()).and().eq("contact2",
+			where.eq(CONTACT1, AppHeader.getConfig().getTorDomain()).and().eq(CONTACT2,
 					AppHeader.getConfig().getTorDomain());
 			List<EncryptKey> keys = queryBuilder.query();
 			if (keys.isEmpty()) {

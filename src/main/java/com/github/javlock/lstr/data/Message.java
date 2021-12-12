@@ -15,6 +15,7 @@ import javax.crypto.NoSuchPaddingException;
 
 import com.github.javlock.lstr.AppHeader;
 import com.github.javlock.lstr.utils.CryptUtils;
+import com.j256.ormlite.dao.Dao;
 import com.j256.ormlite.field.DatabaseField;
 import com.j256.ormlite.table.DatabaseTable;
 
@@ -35,16 +36,17 @@ public class Message implements Serializable {
 	private @Getter @Setter @DatabaseField String from;
 	private @Getter @Setter @DatabaseField String to;
 
-	public void decryptFor(AppInfo contact)
+	public boolean decryptFor(AppInfo contact)
 			throws SQLException, InvalidKeyException, NoSuchAlgorithmException, InvalidKeySpecException,
 			IllegalBlockSizeException, BadPaddingException, InvalidAlgorithmParameterException, NoSuchPaddingException {
 
 		EncryptKey encryptKey = AppHeader.app.dataBase.getKeyFor(contact, AppHeader.getConfig().getTorDomain());
 		String pass = encryptKey.getKey();
 		rawMsg = CryptUtils.decryptFor(pass, encMsg);
+		return true;
 	}
 
-	public void encryptFor(AppInfo contact)
+	public boolean encryptFor(AppInfo contact)
 			throws SQLException, InvalidKeyException, NoSuchAlgorithmException, InvalidKeySpecException,
 			NoSuchPaddingException, InvalidAlgorithmParameterException, IllegalBlockSizeException, BadPaddingException {
 
@@ -61,6 +63,7 @@ public class Message implements Serializable {
 		System.out.println(String.format(OUTPUTFORMAT, "Encrypted (base64) ", encMsg));
 		System.out.println(String.format(OUTPUTFORMAT, "Input (base64)", encMsg));
 		System.out.println(String.format(OUTPUTFORMAT, "Decrypted (plain text)", rawMsg));
+		return true;
 	}
 
 	@Override
@@ -78,6 +81,22 @@ public class Message implements Serializable {
 	@Override
 	public int hashCode() {
 		return Objects.hash(id);
+	}
+
+	public void repare(Dao<Message, String> messageDao, AppInfo myInfo, AppInfo domainInfo)
+			throws InvalidKeyException, NoSuchAlgorithmException, InvalidKeySpecException, IllegalBlockSizeException,
+			BadPaddingException, InvalidAlgorithmParameterException, NoSuchPaddingException, SQLException {
+
+		boolean needUpdate = false;
+		if (getRawMsg() == null && getEncMsg() != null && decryptFor(myInfo)) {
+			needUpdate = true;
+		}
+		if (getRawMsg() != null && getEncMsg() == null && encryptFor(domainInfo)) {
+			needUpdate = true;
+		}
+		if (needUpdate) {
+			messageDao.update(this);
+		}
 	}
 
 	@Override

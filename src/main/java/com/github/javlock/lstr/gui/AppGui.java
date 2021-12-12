@@ -270,10 +270,7 @@ public class AppGui extends JFrame {
 			message.setFrom(AppHeader.getConfig().getTorDomain());
 			message.setTo(messagesSelectedAppInfo.getHost());
 
-			LOGGER.info("{}", message);
 			message.encryptFor(messagesSelectedAppInfo);
-
-			LOGGER.info("{}", message);
 			AppHeader.app.dataBase.saveMessage(message);
 		} catch (SQLException | InvalidKeyException | NoSuchAlgorithmException | InvalidKeySpecException
 				| NoSuchPaddingException | InvalidAlgorithmParameterException | IllegalBlockSizeException
