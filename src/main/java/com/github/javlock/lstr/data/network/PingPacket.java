@@ -1,7 +1,6 @@
-package com.github.javlock.lstr;
+package com.github.javlock.lstr.data.network;
 
 import com.github.javlock.lstr.data.network.InitSessionPacket.FromT;
-import com.github.javlock.lstr.data.network.Packet;
 
 import lombok.Getter;
 import lombok.Setter;

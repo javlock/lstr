@@ -6,9 +6,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.github.javlock.lstr.AppHeader;
-import com.github.javlock.lstr.PingPacket;
 import com.github.javlock.lstr.data.AppInfo;
 import com.github.javlock.lstr.data.network.InitSessionPacket;
+import com.github.javlock.lstr.data.network.PingPacket;
 import com.github.javlock.lstr.data.network.InitSessionPacket.FromT;
 
 import io.netty.channel.ChannelDuplexHandler;
@@ -67,7 +67,7 @@ public class NetHandler extends ChannelDuplexHandler {
 	@Override
 	public void channelInactive(ChannelHandlerContext ctx) throws Exception {
 		LOGGER.info("{}-channelInactive", getType(), ctx.channel().remoteAddress());
-		disconnect(ctx, info, host, port);
+		disconnect(ctx, host, port);
 		pingActive = false;
 	}
 
@@ -108,21 +108,18 @@ public class NetHandler extends ChannelDuplexHandler {
 		LOGGER.info("{}-channelRead msg:[{}]", getType(), msg);
 	}
 
-	private void disconnect(ChannelHandlerContext ctx, AppInfo info2, String host2, int port2)
-			throws InterruptedException {
+	private void disconnect(ChannelHandlerContext ctx, String host2, int port2) throws InterruptedException {
 
-		if (info2 != null) {
-			LOGGER.info("info2 != null: info2:{}", info2);
-			LOGGER.info("info2 != null: info2:HP:{} {}", host2, port2);
-		}
+		if (info != null) {
+			LOGGER.info("info != null: info:{}", info);
+			LOGGER.info("info != null: info:HP:{} {}", host2, port2);
 
-		if (info2 != null && info2 == info) {
-			ctx.close().await();
-			info2.setContext(null);
-			if (info2.getChannelFuture() != null) {
-				info2.getChannelFuture().channel().close().await();
-				info2.setChannelFuture(null);
+			info.setContext(null);
+			if (info.getChannelFuture() != null) {
+				info.getChannelFuture().channel().close().await();
+				info.setChannelFuture(null);
 			}
+			ctx.close().await();
 		} else {
 
 			for (Entry<String, AppInfo> entry : AppHeader.connectionInfoMap.entrySet()) {

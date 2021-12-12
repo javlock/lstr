@@ -35,11 +35,12 @@ public class NetClient extends Thread {
 			int port = appInfo.getPort();
 
 			if (appInfo.itsMe(AppHeader.getConfig().getTorDomain())) {
-				LOGGER.info("appInfo.itsMe");
 				return true;
 			}
+			LOGGER.info("no me {}", appInfo);
 
 			if (appInfo.isConnected()) {
+				LOGGER.info("isConnected {}", appInfo);
 				return true;
 			} else {
 				appInfo.setChannelFuture(dummy);
@@ -108,19 +109,15 @@ public class NetClient extends Thread {
 			while (AppHeader.app.active) { // loop
 
 				for (Entry<String, AppInfo> entry : AppHeader.connectionInfoMap.entrySet()) {
-					String uuid = entry.getKey();
 					AppInfo appInfo = entry.getValue();
-
-					if (appInfo.isConnected()) {
-						LOGGER.info("isConnected");
-						continue;
-					}
 					connect(appInfo);
 				}
 				try {
 					Thread.sleep(3000);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
+					AppHeader.app.active = false;
+					Thread.currentThread().interrupt();
 				}
 			} // loop
 		}

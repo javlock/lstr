@@ -2,6 +2,7 @@ package com.github.javlock.lstr.data;
 
 import java.io.Serializable;
 import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +26,8 @@ public class AppInfo implements Serializable {
 
 	private transient @Getter @Setter ChannelHandlerContext context;// from handler
 	private transient @Getter @Setter ChannelFuture channelFuture;// for connect
+
+	private transient @Getter CopyOnWriteArrayList<Message> messages = new CopyOnWriteArrayList<>();
 
 	public AppInfo() {
 	}
@@ -88,16 +91,6 @@ public class AppInfo implements Serializable {
 		}
 		builder.append("port=");
 		builder.append(port);
-		builder.append(", ");
-		if (context != null) {
-			builder.append("context=");
-			builder.append(context);
-			builder.append(", ");
-		}
-		if (channelFuture != null) {
-			builder.append("channelFuture=");
-			builder.append(channelFuture);
-		}
 		builder.append("]");
 		return builder.toString();
 	}

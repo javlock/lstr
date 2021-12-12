@@ -59,18 +59,17 @@ public class TorWorker extends Thread {
 		builder.append("SOCKSPort ").append(torSocksPort).append('\n');
 		if (!TORRC.exists()) {
 			Files.createFile(TORRC.toPath());
-		} else {
-			List<String> lines = Files.readAllLines(TORRC.toPath(), StandardCharsets.UTF_8);
-			for (String string : lines) {
-				if (string.toLowerCase().startsWith("SOCKSPort".toLowerCase())) {
-					LOGGER.info(string);
-				}
-				if (string.toLowerCase().startsWith("HiddenServicePort".toLowerCase())) {
-					LOGGER.info(string);
-				}
-			}
 		}
 		Files.writeString(TORRC.toPath(), builder, StandardOpenOption.TRUNCATE_EXISTING);
+		List<String> lines = Files.readAllLines(TORRC.toPath(), StandardCharsets.UTF_8);
+		for (String string : lines) {
+			if (string.toLowerCase().startsWith("SOCKSPort".toLowerCase())) {
+				LOGGER.info(string);
+			}
+			if (string.toLowerCase().startsWith("HiddenServicePort".toLowerCase())) {
+				LOGGER.info(string);
+			}
+		}
 	}
 
 	private String getOsName() {
@@ -84,6 +83,7 @@ public class TorWorker extends Thread {
 	}
 
 	public void init() throws IOException {
+		AppHeader.app.dataBase.loadConfig();
 		unpack();
 		createConfig();
 	}

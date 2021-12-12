@@ -1,4 +1,4 @@
-package com.github.javlock.lstr;
+package com.github.javlock.lstr.services;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -8,6 +8,7 @@ import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 
+import com.github.javlock.lstr.AppHeader;
 import com.github.javlock.lstr.data.AppInfo;
 
 public class BootStrapRunner extends Thread {
