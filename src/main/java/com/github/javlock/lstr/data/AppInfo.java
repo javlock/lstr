@@ -54,25 +54,20 @@ public class AppInfo implements Serializable {
 	}
 
 	public boolean isConnected() {
-		if (channelFuture != null) {
-			LOGGER.info("channelFuture [{}]", channelFuture);
-			LOGGER.info("context [{}]", context);
-			return true;
-		}
-
-		// FIXME
-
-		if (context != null) {
-			LOGGER.info("isActive [{}]", context.channel().isActive());
-			LOGGER.info("isOpen [{}]", context.channel().isOpen());
-			return true;
-		}
-
-		return false;
+		return channelFuture != null || context != null;
 	}
 
 	public boolean itsMe(String torDomain) {
 		return torDomain.equalsIgnoreCase(host);
+	}
+
+	public void send(Serializable msg) {
+		if (channelFuture != null) {
+			channelFuture.channel().writeAndFlush(msg);
+		}
+		if (context != null) {
+			context.channel().writeAndFlush(msg);
+		}
 	}
 
 	@Override

@@ -9,8 +9,6 @@ import org.slf4j.LoggerFactory;
 import com.github.javlock.lstr.AppHeader;
 import com.github.javlock.lstr.data.AppInfo;
 import com.github.javlock.lstr.data.dummy.ChannelFutureDummy;
-import com.github.javlock.lstr.data.network.InitSessionPacket;
-import com.github.javlock.lstr.data.network.InitSessionPacket.FromT;
 import com.github.javlock.lstr.data.network.Packet;
 import com.github.javlock.lstr.network.client.handler.NetClientHandler;
 
@@ -37,14 +35,13 @@ public class NetClient extends Thread {
 			if (appInfo.itsMe(AppHeader.getConfig().getTorDomain())) {
 				return true;
 			}
-			LOGGER.info("no me {}", appInfo);
 
 			if (appInfo.isConnected()) {
-				LOGGER.info("isConnected {}", appInfo);
 				return true;
 			} else {
 				appInfo.setChannelFuture(dummy);
 			}
+			LOGGER.info("no me {}", appInfo);
 
 			Bootstrap b = new Bootstrap();
 			b.resolver(NoopAddressResolverGroup.INSTANCE);
@@ -85,12 +82,6 @@ public class NetClient extends Thread {
 
 			if (result) {
 				appInfo.setChannelFuture(future);
-
-				InitSessionPacket packet = new InitSessionPacket();
-				packet.setFrom(FromT.CLIENT);
-				packet.setHost(AppHeader.getConfig().getTorDomain());
-				packet.setPort(4001);
-				future.channel().writeAndFlush(packet);
 			} else {
 				LOGGER.error("{}", future);
 				appInfo.setChannelFuture(null);
@@ -113,7 +104,7 @@ public class NetClient extends Thread {
 					connect(appInfo);
 				}
 				try {
-					Thread.sleep(3000);
+					Thread.sleep(15000);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 					AppHeader.app.active = false;

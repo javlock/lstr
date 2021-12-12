@@ -4,17 +4,9 @@ import java.awt.BorderLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
-import java.awt.event.ActionListener;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.security.spec.InvalidKeySpecException;
 import java.sql.SQLException;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import javax.crypto.BadPaddingException;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -55,15 +47,6 @@ public class AppGui extends JFrame {
 
 	private @Setter AppInfo messagesSelectedAppInfo;
 
-	transient ActionListener btnSendMessageListener = a -> {
-
-		if (messagesSelectedAppInfo != null) {
-			LOGGER.info("AppGui.enclosing_method():{}", messagesSelectedAppInfo);
-		} else {
-			LOGGER.info("AppGui.enclosing_method(null)");
-		}
-	};
-
 	private JTextField tfUsername;
 	private JTextField tfServerPort;
 	private JTextField tfTorPort;
@@ -98,7 +81,6 @@ public class AppGui extends JFrame {
 
 		JButton btnSendMessage = new JButton("Send");
 		btnSendMessage.addActionListener(e -> sendMessage());
-		btnSendMessage.addActionListener(btnSendMessageListener);
 		msgBtnAndField.add(btnSendMessage, BorderLayout.EAST);
 
 		JScrollPane messagesMessageScrollPane = new JScrollPane();
@@ -260,7 +242,6 @@ public class AppGui extends JFrame {
 				LOGGER.warn("empty for");
 				return;
 			}
-
 			if (taMessage.getText().isEmpty()) {
 				LOGGER.warn("Message empty");
 				return;
@@ -270,11 +251,9 @@ public class AppGui extends JFrame {
 			message.setFrom(AppHeader.getConfig().getTorDomain());
 			message.setTo(messagesSelectedAppInfo.getHost());
 
-			message.encryptFor(messagesSelectedAppInfo);
 			AppHeader.app.dataBase.saveMessage(message);
-		} catch (SQLException | InvalidKeyException | NoSuchAlgorithmException | InvalidKeySpecException
-				| NoSuchPaddingException | InvalidAlgorithmParameterException | IllegalBlockSizeException
-				| BadPaddingException e) {
+			messagesSelectedAppInfo.send(message);
+		} catch (SQLException e) {
 			e.printStackTrace();
 		}
 	}
