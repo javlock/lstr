@@ -36,6 +36,17 @@ public class AppInfo implements Serializable {
 		host = domain;
 	}
 
+	public void disconnect() throws InterruptedException {
+		if (channelFuture != null) {
+			channelFuture.channel().closeFuture().await();
+		}
+		if (context != null) {
+			context.close().await();
+		}
+		setChannelFuture(null);
+		setContext(null);
+	}
+
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj) {
@@ -64,8 +75,7 @@ public class AppInfo implements Serializable {
 	public void send(Serializable msg) {
 		if (channelFuture != null) {
 			channelFuture.channel().writeAndFlush(msg);
-		}
-		if (context != null) {
+		} else if (context != null) {
 			context.channel().writeAndFlush(msg);
 		}
 	}

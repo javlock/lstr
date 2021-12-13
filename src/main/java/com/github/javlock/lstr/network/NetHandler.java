@@ -26,9 +26,7 @@ public class NetHandler extends ChannelDuplexHandler {
 
 	private @Getter @Setter HandlerType type = HandlerType.NA;
 
-	protected @Getter @Setter String host;
-	protected @Getter @Setter int port;
-	protected AppInfo info;
+	protected @Getter @Setter AppInfo info;
 
 	@Override
 	public void channelActive(ChannelHandlerContext ctx) throws Exception {
@@ -38,7 +36,7 @@ public class NetHandler extends ChannelDuplexHandler {
 	@Override
 	public void channelInactive(ChannelHandlerContext ctx) throws Exception {
 		LOGGER.info("{}-channelInactive", getType(), ctx.channel().remoteAddress());
-		disconnect(ctx, host, port);
+		disconnect(ctx, info.getHost(), info.getPort());
 	}
 
 	@Override
@@ -46,8 +44,8 @@ public class NetHandler extends ChannelDuplexHandler {
 
 		if (msg instanceof InitSessionPacket) {
 			InitSessionPacket initSessionPacket = (InitSessionPacket) msg;
-			host = initSessionPacket.getHost();
-			port = initSessionPacket.getPort();
+			String host = initSessionPacket.getHost();
+			int port = initSessionPacket.getPort();
 
 			info = AppHeader.connectionInfoMap.computeIfAbsent(host, v -> new AppInfo(host));
 			info.setHost(host);
@@ -84,11 +82,7 @@ public class NetHandler extends ChannelDuplexHandler {
 		} else {
 			if (host2 != null) {
 				AppInfo infoHost = AppHeader.connectionInfoMap.get(host2);
-				if (infoHost != null) {
-					infoHost.setContext(null);
-					infoHost.setChannelFuture(null);
-					System.out.println("NetHandler.disconnect(via null)");
-				}
+				infoHost.disconnect();
 			}
 
 			for (Entry<String, AppInfo> entry : AppHeader.connectionInfoMap.entrySet()) {

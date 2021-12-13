@@ -66,8 +66,7 @@ public class NetClient extends Thread {
 								// core
 
 								NetClientHandler handler = new NetClientHandler();
-								handler.setHost(host);
-								handler.setPort(port);
+								handler.setInfo(appInfo);
 								p.addLast(handler);
 
 							} catch (Exception e) {
@@ -78,13 +77,15 @@ public class NetClient extends Thread {
 
 			ChannelFuture future = b.connect(host, port).awaitUninterruptibly();
 			boolean result = future.isSuccess();
-			LOGGER.info("connection to {}:{} isSuccess?:{}", host, port, result);
-
 			if (result) {
 				appInfo.setChannelFuture(future);
 			} else {
 				LOGGER.error("{}", future);
-				appInfo.setChannelFuture(null);
+				try {
+					appInfo.disconnect();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
 				gr.shutdownGracefully();
 			}
 
@@ -104,7 +105,7 @@ public class NetClient extends Thread {
 					connect(appInfo);
 				}
 				try {
-					Thread.sleep(15000);
+					Thread.sleep(60000);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 					AppHeader.app.active = false;

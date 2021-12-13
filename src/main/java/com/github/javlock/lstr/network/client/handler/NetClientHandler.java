@@ -13,8 +13,6 @@ public class NetClientHandler extends NetHandler {
 	}
 
 	public NetClientHandler(String host, int port) {
-		this.host = host;
-		this.port = port;
 		setType(HandlerType.CLIENT);
 	}
 
