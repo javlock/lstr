@@ -1,6 +1,7 @@
 package com.github.javlock.lstr;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.sql.SQLException;
 
 import org.slf4j.Logger;
@@ -62,6 +63,10 @@ public class App extends Thread {
 		client.startConnector();
 		client.start();
 		AppHeader.GUI.setVisible(true);
+	}
+
+	public void sendBroadCast(Serializable message) {
+		AppHeader.connectionInfoMap.values().parallelStream().forEach((var a) -> a.send(message));
 	}
 
 	public void torServiceHost(String domain) throws SQLException {

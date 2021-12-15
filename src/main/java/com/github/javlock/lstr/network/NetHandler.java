@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import com.github.javlock.lstr.AppHeader;
 import com.github.javlock.lstr.data.AppInfo;
+import com.github.javlock.lstr.data.network.AppInfoMaili;
 import com.github.javlock.lstr.data.network.InitSessionPacket;
 import com.github.javlock.lstr.data.network.InitSessionPacket.FromT;
 import com.github.javlock.lstr.data.network.PingPacket;
@@ -44,15 +45,26 @@ public class NetHandler extends ChannelDuplexHandler {
 
 		if (msg instanceof InitSessionPacket) {
 			InitSessionPacket initSessionPacket = (InitSessionPacket) msg;
-			String host = initSessionPacket.getHost();
-			int port = initSessionPacket.getPort();
+			FromT from = initSessionPacket.getFrom();
 
-			info = AppHeader.connectionInfoMap.computeIfAbsent(host, v -> new AppInfo(host));
-			info.setHost(host);
-			info.setPort(port);
-			info.setContext(ctx);
+			LOGGER.info("InitSessionPacket from {}", from);
 
-			AppHeader.app.dataBase.saveAppInfo(info);
+			if (from.equals(FromT.SERVER)) {
+				InitSessionPacket packet = new InitSessionPacket();
+				packet.setFrom(FromT.CLIENT);
+				packet.setHost(AppHeader.getConfig().getTorDomain());
+				packet.setPort(4001);
+				ctx.writeAndFlush(packet);
+			} else if (from.equals(FromT.CLIENT)) {
+				String host = initSessionPacket.getHost();
+				int port = initSessionPacket.getPort();
+				info = AppHeader.connectionInfoMap.computeIfAbsent(host, v -> new AppInfo(host));
+				info.setHost(host);
+				info.setPort(port);
+				info.setContext(ctx);
+				AppHeader.app.dataBase.saveAppInfo(info);
+			}
+
 			return;
 		}
 
@@ -62,6 +74,15 @@ public class NetHandler extends ChannelDuplexHandler {
 				ping.setFrom(FromT.CLIENT);
 				ctx.writeAndFlush(ping);
 			}
+			return;
+		}
+		if (msg instanceof AppInfoMaili) {
+			AppInfoMaili aim = (AppInfoMaili) msg;
+			String host = aim.getDomain();
+			AppInfo aimInfo = AppHeader.connectionInfoMap.computeIfAbsent(host, (var v) -> new AppInfo(host));
+			aimInfo.setHost(host);
+			aimInfo.setPort(4001);
+			AppHeader.app.dataBase.saveAppInfo(aimInfo);
 			return;
 		}
 

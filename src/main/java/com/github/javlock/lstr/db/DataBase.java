@@ -10,6 +10,7 @@ import com.github.javlock.lstr.AppHeader;
 import com.github.javlock.lstr.data.AppInfo;
 import com.github.javlock.lstr.data.Message;
 import com.github.javlock.lstr.data.configs.AppConfig;
+import com.github.javlock.lstr.data.network.AppInfoMaili;
 import com.j256.ormlite.dao.Dao;
 import com.j256.ormlite.dao.DaoManager;
 import com.j256.ormlite.jdbc.JdbcConnectionSource;
@@ -113,6 +114,8 @@ public class DataBase extends Thread {
 				AppHeader.GUI.receiveAppInfo(appInfo);
 				// network
 				AppHeader.connectionInfoMap.putIfAbsent(domain, appInfo);
+				AppInfoMaili aim = new AppInfoMaili(domain);
+				AppHeader.app.sendBroadCast(aim);
 			}
 
 			try {

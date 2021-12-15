@@ -73,11 +73,16 @@ public class AppInfo implements Serializable {
 	}
 
 	public void send(Serializable msg) {
-		if (channelFuture != null) {
-			channelFuture.channel().writeAndFlush(msg);
-		} else if (context != null) {
-			context.channel().writeAndFlush(msg);
+		try {
+			if (channelFuture != null) {
+				channelFuture.channel().writeAndFlush(msg);
+			} else if (context != null) {
+				context.channel().writeAndFlush(msg);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
+
 	}
 
 	@Override
