@@ -17,7 +17,9 @@ public class Message implements Serializable {
 
 	private @Getter @DatabaseField(id = true) String id = UUID.randomUUID().toString();
 
-	private @Getter long timeCreated = System.currentTimeMillis() / 1000;
+	private @Getter @DatabaseField long timeCreated = System.currentTimeMillis() / 1000;
+	private @Getter @DatabaseField boolean delivered;
+	private @Getter @DatabaseField long timeDelivery;
 
 	private @Getter @Setter @DatabaseField String rawMsg;
 	private @Getter @Setter @DatabaseField String from;
