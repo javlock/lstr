@@ -14,6 +14,7 @@ public class WindowCloseListener implements WindowListener {
 	@Override
 	public void windowClosed(WindowEvent e) {
 		AppHeader.app.active = false;
+		// AppHeader.APPINTERFACE.guiClosed();
 	}
 
 	@Override

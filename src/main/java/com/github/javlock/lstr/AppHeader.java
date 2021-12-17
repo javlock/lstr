@@ -12,6 +12,26 @@ import lombok.Getter;
 import lombok.Setter;
 
 public class AppHeader {
+	public interface AppInterface {
+		void appStart();
+
+		void guiClose();
+
+		void guiClosed();
+
+		void guiStart();
+
+		void guiStarted();
+
+	}
+
+	interface TorInteface {
+		void torStart();
+
+		void torStarted();
+
+	}
+
 	public static App app;
 
 	public static final AppGui GUI = new AppGui();
@@ -28,5 +48,54 @@ public class AppHeader {
 		}
 	}
 	public static final ConcurrentHashMap<String, AppInfo> connectionInfoMap = new ConcurrentHashMap<>();
+
+	public static final TorInteface TORINTEFACE = new TorInteface() {
+
+		@Override
+		public void torStart() {
+			// TODO Auto-generated method stub
+
+		}
+
+		@Override
+		public void torStarted() {
+			// TODO Auto-generated method stub
+
+		}
+	};
+
+	public static final AppInterface APPINTERFACE = new AppInterface() {
+
+		@Override
+		public void appStart() {
+			// TODO Auto-generated method stub
+
+		}
+
+		@Override
+		public void guiClose() {
+			AppHeader.GUI.setVisible(false);
+			AppHeader.GUI.dispose();
+			guiClosed();
+		}
+
+		@Override
+		public void guiClosed() {
+			// TODO Auto-generated method stub
+
+		}
+
+		@Override
+		public void guiStart() {
+			AppHeader.GUI.setVisible(true);
+			guiStarted();
+		}
+
+		@Override
+		public void guiStarted() {
+
+		}
+
+	};
 
 }
