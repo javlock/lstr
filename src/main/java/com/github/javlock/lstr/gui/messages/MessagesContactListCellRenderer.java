@@ -1,4 +1,4 @@
-package com.github.javlock.lstr.gui;
+package com.github.javlock.lstr.gui.messages;
 
 import java.awt.Component;
 
@@ -14,7 +14,7 @@ import javax.swing.border.TitledBorder;
 import com.github.javlock.lstr.AppHeader;
 import com.github.javlock.lstr.data.AppInfo;
 
-public class FocusedTitleListCellRenderer implements ListCellRenderer<AppInfo> {
+public class MessagesContactListCellRenderer implements ListCellRenderer<AppInfo> {
 	protected static Border noFocusBorder = new EmptyBorder(15, 1, 1, 1);
 	protected static TitledBorder focusBorder = new TitledBorder(LineBorder.createGrayLineBorder(), "title");
 	protected DefaultListCellRenderer defaultRenderer = new DefaultListCellRenderer();
@@ -36,7 +36,7 @@ public class FocusedTitleListCellRenderer implements ListCellRenderer<AppInfo> {
 			label.setText(value.getHost());
 		}
 		if (isSelected) {
-			AppHeader.GUI.messagesSelectedAppInfo = value;
+			AppHeader.GUI.setMessagesSelectedAppInfo(value);
 		}
 
 		// renderer.setBorder(cellHasFocus ? focusBorder : noFocusBorder);

@@ -18,7 +18,8 @@ public class ChannelFutureDummy implements ChannelFuture {
 	}
 
 	@Override
-	public ChannelFuture addListeners(GenericFutureListener<? extends Future<? super Void>>... listeners) {
+	public ChannelFuture addListeners(
+			@SuppressWarnings("unchecked") GenericFutureListener<? extends Future<? super Void>>... listeners) {
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -132,7 +133,8 @@ public class ChannelFutureDummy implements ChannelFuture {
 	}
 
 	@Override
-	public ChannelFuture removeListeners(GenericFutureListener<? extends Future<? super Void>>... listeners) {
+	public ChannelFuture removeListeners(
+			@SuppressWarnings("unchecked") GenericFutureListener<? extends Future<? super Void>>... listeners) {
 		// TODO Auto-generated method stub
 		return null;
 	}

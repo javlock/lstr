@@ -2,11 +2,11 @@ package com.github.javlock.lstr.data;
 
 import java.io.Serializable;
 import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.javlock.lstr.data.dummy.ChannelFutureDummy;
 import com.j256.ormlite.field.DatabaseField;
 import com.j256.ormlite.table.DatabaseTable;
 
@@ -24,14 +24,27 @@ public class AppInfo implements Serializable {
 	private @Getter @Setter @DatabaseField(id = true) String host;
 	private @Getter @Setter @DatabaseField int port;
 
-	private transient @Getter @Setter ChannelHandlerContext context;
-	private transient @Getter @Setter ChannelFuture channelFuture;
+	private transient @Getter @Setter ChannelHandlerContext context;// from handler
+	private transient @Getter @Setter ChannelFuture channelFuture;// for connect
+
+	private transient @Getter CopyOnWriteArrayList<Message> messages = new CopyOnWriteArrayList<>();
 
 	public AppInfo() {
 	}
 
 	public AppInfo(String domain) {
 		host = domain;
+	}
+
+	public void disconnect() throws InterruptedException {
+		if (channelFuture != null) {
+			channelFuture.channel().closeFuture().await();
+		}
+		if (context != null) {
+			context.close().await();
+		}
+		setChannelFuture(null);
+		setContext(null);
 	}
 
 	@Override
@@ -52,20 +65,24 @@ public class AppInfo implements Serializable {
 	}
 
 	public boolean isConnected() {
-		if (channelFuture instanceof ChannelFutureDummy) {
-			return true;
-		}
-		// FIXME
-		/*
-		 * if (channelFuture.channel().is) { }
-		 */
+		return channelFuture != null || context != null;
+	}
 
-		if (context != null) {
-			LOGGER.info("isActive {}", context.channel().isActive());
-			LOGGER.info("isOpen {}", context.channel().isOpen());
-			return true;
+	public boolean itsMe(String torDomain) {
+		return torDomain.equalsIgnoreCase(host);
+	}
+
+	public void send(Serializable msg) {
+		try {
+			if (channelFuture != null) {
+				channelFuture.channel().writeAndFlush(msg);
+			} else if (context != null) {
+				context.channel().writeAndFlush(msg);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
-		return false;
+
 	}
 
 	@Override
@@ -84,16 +101,6 @@ public class AppInfo implements Serializable {
 		}
 		builder.append("port=");
 		builder.append(port);
-		builder.append(", ");
-		if (context != null) {
-			builder.append("context=");
-			builder.append(context);
-			builder.append(", ");
-		}
-		if (channelFuture != null) {
-			builder.append("channelFuture=");
-			builder.append(channelFuture);
-		}
 		builder.append("]");
 		return builder.toString();
 	}

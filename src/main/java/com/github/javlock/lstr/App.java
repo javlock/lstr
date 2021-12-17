@@ -1,6 +1,7 @@
 package com.github.javlock.lstr;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.sql.SQLException;
 
 import org.slf4j.Logger;
@@ -10,6 +11,7 @@ import com.github.javlock.lstr.data.configs.AppConfig;
 import com.github.javlock.lstr.db.DataBase;
 import com.github.javlock.lstr.network.client.NetClient;
 import com.github.javlock.lstr.network.server.NetServer;
+import com.github.javlock.lstr.services.BootStrapRunner;
 import com.github.javlock.lstr.services.TorWorker;
 
 public class App extends Thread {
@@ -63,25 +65,26 @@ public class App extends Thread {
 		AppHeader.GUI.setVisible(true);
 	}
 
+	public void sendBroadCast(Serializable message) {
+		AppHeader.connectionInfoMap.values().parallelStream().forEach((var a) -> a.send(message));
+	}
+
 	public void torServiceHost(String domain) throws SQLException {
 		LOGGER.info("TOR DOMAIN IS {}", domain);
 		boolean needWrite = AppHeader.getConfig().getTorDomain() == null
 				|| !AppHeader.getConfig().getTorDomain().equals(domain);
 		AppHeader.getConfig().setTorDomain(domain);
+
 		if (needWrite) {
 			if (dataBase.configDao.countOf() == 0) {// create
 				AppConfig newConfig = new AppConfig();
 				newConfig.setTorDomain(domain);
 				dataBase.configDao.create(newConfig);
 			} else {// load
-				for (AppConfig config : dataBase.configDao) {
-					if (config != null) {
-						AppHeader.setConfig(config);
-						break;
-					}
-				}
+				dataBase.loadConfig();
 			}
 			dataBase.updateSettings();
+
 		}
 	}
 
