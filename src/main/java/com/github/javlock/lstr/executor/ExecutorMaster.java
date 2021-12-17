@@ -1,4 +1,4 @@
-package com.github.javlock.lstr;
+package com.github.javlock.lstr.executor;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -27,7 +27,7 @@ public class ExecutorMaster {
 		return this;
 	}
 
-	public int call() throws IOException, InterruptedException {
+	public int call() throws Exception {
 		processBuilder.redirectErrorStream(true);
 
 		ArrayList<String> realCmd = new ArrayList<>();
