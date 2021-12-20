@@ -8,12 +8,13 @@ import lombok.Setter;
 
 @DatabaseTable(tableName = "settings")
 public class AppConfig {
+	private @Getter @DatabaseField(id = true) int id = 0;
 
 	private @Getter @Setter @DatabaseField String username;
 
 	private @Getter @Setter @DatabaseField int serverPort = 49000;
 
-	private @Getter @Setter @DatabaseField(id = true) String torDomain;
+	private @Getter @Setter @DatabaseField String torDomain;
 	private @Getter @Setter @DatabaseField int torSocksPort = 10359;
 
 	private @Getter @Setter @DatabaseField boolean torNeedProxy = false;
