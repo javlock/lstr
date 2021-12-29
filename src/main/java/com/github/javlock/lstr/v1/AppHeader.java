@@ -4,9 +4,9 @@ import java.io.File;
 import java.net.URISyntaxException;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.github.javlock.lstr.data.AppInfo;
 import com.github.javlock.lstr.data.configs.AppConfig;
 import com.github.javlock.lstr.v1.gui.AppGui;
+import com.github.javlock.lstr.v2.data.AppInfo;
 
 import lombok.Getter;
 import lombok.Setter;

@@ -5,12 +5,12 @@ import java.util.Map.Entry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.javlock.lstr.data.AppInfo;
 import com.github.javlock.lstr.data.network.AppInfoMaili;
 import com.github.javlock.lstr.data.network.InitSessionPacket;
 import com.github.javlock.lstr.data.network.InitSessionPacket.FromT;
 import com.github.javlock.lstr.data.network.PingPacket;
 import com.github.javlock.lstr.v1.AppHeader;
+import com.github.javlock.lstr.v2.data.AppInfo;
 
 import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;

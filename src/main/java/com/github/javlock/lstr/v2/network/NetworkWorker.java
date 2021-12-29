@@ -1,18 +1,24 @@
 package com.github.javlock.lstr.v2.network;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLConnection;
+import java.sql.SQLException;
 import java.util.Map.Entry;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.javlock.lstr.data.AppInfo;
 import com.github.javlock.lstr.data.network.Packet;
 import com.github.javlock.lstr.v2.AppHeader;
 import com.github.javlock.lstr.v2.Interfaces.NetworkInterface;
-import com.github.javlock.lstr.v2.network.server.handler.NetServerHandler;
+import com.github.javlock.lstr.v2.data.AppInfo;
+import com.github.javlock.lstr.v2.network.handler.server.NetServerHandler;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
@@ -30,19 +36,39 @@ import lombok.Getter;
 
 public class NetworkWorker {
 	public class BootStrap extends Thread {
+		private CopyOnWriteArrayList<URL> bootstrapLinks = new CopyOnWriteArrayList<>();
+
 		public void appendUrl(String string) throws MalformedURLException {
 			appendUrl(new URL(string));
 		}
 
 		public void appendUrl(URL uri) {
-			// TODO Auto-generated method stub
-
+			bootstrapLinks.addIfAbsent(uri);
 		}
 
 		@Override
 		public void run() {
 			do {
-
+				for (URL url : bootstrapLinks) {
+					URLConnection yc;
+					try {
+						yc = url.openConnection();
+						try (BufferedReader in = new BufferedReader(new InputStreamReader(yc.getInputStream()))) {
+							String domain;
+							while ((domain = in.readLine()) != null) {
+								try {
+									AppInfo appInfo = new AppInfo(domain);
+									appInfo.setPort(4001);
+									AppHeader.dataInterface.bootstrapAppInfo(appInfo);
+								} catch (SQLException e) {
+									e.printStackTrace();
+								}
+							}
+						}
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
 				try {
 					Thread.sleep(45000);
 				} catch (InterruptedException e) {
@@ -109,7 +135,7 @@ public class NetworkWorker {
 				protected void initChannel(SocketChannel ch) throws Exception {
 					ChannelPipeline p = ch.pipeline();
 
-					p.addLast(new ObjectDecoder(Integer.MAX_VALUE,
+					p.addLast(new ObjectDecoder(AppHeader.objectForSendNetworkMaxLen,
 							ClassResolvers.softCachingConcurrentResolver(Packet.class.getClassLoader())));
 					p.addLast(new ObjectEncoder());
 

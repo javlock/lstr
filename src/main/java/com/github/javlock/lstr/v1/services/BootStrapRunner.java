@@ -8,8 +8,8 @@ import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 
-import com.github.javlock.lstr.data.AppInfo;
 import com.github.javlock.lstr.v1.AppHeader;
+import com.github.javlock.lstr.v2.data.AppInfo;
 
 public class BootStrapRunner extends Thread {
 

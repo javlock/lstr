@@ -24,12 +24,12 @@ import javax.swing.SwingConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.javlock.lstr.data.AppInfo;
 import com.github.javlock.lstr.data.Message;
 import com.github.javlock.lstr.data.configs.AppConfig;
 import com.github.javlock.lstr.v1.AppHeader;
 import com.github.javlock.lstr.v1.gui.messages.MessagesContactListCellRenderer;
 import com.github.javlock.lstr.v1.gui.messages.MessagesMessagesListCellRenderer;
+import com.github.javlock.lstr.v2.data.AppInfo;
 
 import lombok.Setter;
 

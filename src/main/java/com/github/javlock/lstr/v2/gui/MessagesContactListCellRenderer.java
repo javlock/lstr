@@ -11,8 +11,8 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.border.TitledBorder;
 
-import com.github.javlock.lstr.data.AppInfo;
 import com.github.javlock.lstr.v2.AppHeader;
+import com.github.javlock.lstr.v2.data.AppInfo;
 
 public class MessagesContactListCellRenderer implements ListCellRenderer<AppInfo> {
 	protected static Border noFocusBorder = new EmptyBorder(15, 1, 1, 1);

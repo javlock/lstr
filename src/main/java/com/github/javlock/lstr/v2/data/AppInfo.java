@@ -1,4 +1,4 @@
-package com.github.javlock.lstr.data;
+package com.github.javlock.lstr.v2.data;
 
 import java.io.Serializable;
 import java.net.InetSocketAddress;
@@ -9,9 +9,10 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.github.javlock.lstr.data.Message;
 import com.github.javlock.lstr.data.network.Packet;
-import com.github.javlock.lstr.v1.network.client.handler.NetClientHandler;
 import com.github.javlock.lstr.v2.AppHeader;
+import com.github.javlock.lstr.v2.network.handler.client.NetClientHandler;
 import com.j256.ormlite.field.DatabaseField;
 import com.j256.ormlite.table.DatabaseTable;
 
@@ -33,14 +34,14 @@ import lombok.Getter;
 import lombok.Setter;
 
 @DatabaseTable(tableName = "AppInfo")
-public class AppInfo implements Serializable {
+public class AppInfo extends Data {
 	private static final long serialVersionUID = -687125762693928112L;
 	private static final transient Logger LOGGER = LoggerFactory.getLogger("AppInfo");
 
 	private @Getter @Setter @DatabaseField String username;
 	private @Getter @Setter @DatabaseField(id = true) String host;
 
-	private @Getter @Setter @DatabaseField int port;
+	private @Getter @Setter @DatabaseField int port = 4001;
 	private transient @Getter @Setter ChannelHandlerContext context;// from handler
 
 	private transient @Getter @Setter ChannelFuture channelFuture;// for connect
@@ -48,6 +49,7 @@ public class AppInfo implements Serializable {
 	private transient @Getter CopyOnWriteArrayList<Message> messages = new CopyOnWriteArrayList<>();
 
 	public AppInfo() {
+
 	}
 
 	public AppInfo(String domain) {
@@ -61,7 +63,7 @@ public class AppInfo implements Serializable {
 		if (isConnected()) {
 			return true;
 		} else {
-			setChannelFuture(AppHeader.dummy);
+			setChannelFuture(AppHeader.DUMMY);
 		}
 		LOGGER.info("no me {}", this);
 		final AppInfo ttt = this;
@@ -92,7 +94,7 @@ public class AppInfo implements Serializable {
 							p.addLast(proxyHandler1);
 
 							// objects
-							p.addLast(new ObjectDecoder(Integer.MAX_VALUE,
+							p.addLast(new ObjectDecoder(AppHeader.objectForSendNetworkMaxLen,
 									ClassResolvers.softCachingConcurrentResolver(Packet.class.getClassLoader())));
 							p.addLast(new ObjectEncoder());
 							// core
@@ -148,6 +150,11 @@ public class AppInfo implements Serializable {
 		}
 		AppInfo other = (AppInfo) obj;
 		return Objects.equals(host, other.host) && port == other.port && Objects.equals(username, other.username);
+	}
+
+	@Override
+	public Object getId() throws UnsupportedOperationException {
+		return host;
 	}
 
 	@Override

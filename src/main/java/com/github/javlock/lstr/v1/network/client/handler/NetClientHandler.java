@@ -1,7 +1,6 @@
 package com.github.javlock.lstr.v1.network.client.handler;
 
 import com.github.javlock.lstr.v1.network.NetHandler;
-import com.github.javlock.lstr.v1.network.NetHandler.HandlerType;
 
 import io.netty.channel.ChannelHandlerContext;
 

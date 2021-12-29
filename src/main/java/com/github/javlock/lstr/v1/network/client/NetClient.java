@@ -7,11 +7,11 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.javlock.lstr.data.AppInfo;
 import com.github.javlock.lstr.data.dummy.ChannelFutureDummy;
 import com.github.javlock.lstr.data.network.Packet;
 import com.github.javlock.lstr.v1.AppHeader;
 import com.github.javlock.lstr.v1.network.client.handler.NetClientHandler;
+import com.github.javlock.lstr.v2.data.AppInfo;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.ChannelFuture;

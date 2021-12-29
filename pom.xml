@@ -145,7 +145,6 @@
 			<plugin>
 				<groupId>com.github.spotbugs</groupId>
 				<artifactId>spotbugs-maven-plugin</artifactId>
-				<version>4.3.0</version>
 				<dependencies>
 					<dependency>
 						<groupId>com.github.spotbugs</groupId>
@@ -161,25 +160,6 @@
 			<plugin>
 				<artifactId>maven-assembly-plugin</artifactId>
 				<executions>
-					<execution>
-						<id>make-${project.artifactId}-v1</id> <!-- this is used for inheritance merges -->
-						<phase>package</phase>
-						<configuration>
-							<finalName>${project.artifactId}-${project.version}-v1-git-${git.commit.id.full}
-							</finalName>
-							<archive>
-								<manifest>
-									<mainClass>${mainClass}</mainClass>
-								</manifest>
-							</archive>
-							<descriptorRefs>
-								<descriptorRef>jar-with-dependencies</descriptorRef>
-							</descriptorRefs>
-						</configuration>
-						<goals>
-							<goal>single</goal>
-						</goals>
-					</execution>
 					<execution>
 						<id>make-${project.artifactId}-v2</id> <!-- this is used for inheritance merges -->
 						<phase>package</phase>

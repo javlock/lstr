@@ -5,9 +5,9 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JFrame;
@@ -24,10 +24,12 @@ import javax.swing.SwingConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.javlock.lstr.data.AppInfo;
 import com.github.javlock.lstr.data.Message;
 import com.github.javlock.lstr.data.configs.AppConfig;
 import com.github.javlock.lstr.v2.AppHeader;
+import com.github.javlock.lstr.v2.Interfaces.GuiInterface;
+import com.github.javlock.lstr.v2.data.AppInfo;
+import com.github.javlock.lstr.v2.gui.api.DefaultListModelApi;
 
 import lombok.Setter;
 
@@ -35,13 +37,62 @@ public class AppGui extends JFrame {
 
 	private static final long serialVersionUID = 8795345850667323095L;
 
-	private static final DefaultListModel<AppInfo> messagesContactModel = new DefaultListModel<>();
-	private static final DefaultListModel<Message> messagesMessageModel = new DefaultListModel<>();
+	private static final DefaultListModelApi<Message> messagesMessageModel = new DefaultListModelApi<>();
 
 	private static final Logger LOGGER = LoggerFactory.getLogger("AppGui");
-
 	private static transient MessagesContactListCellRenderer messagesContactListCellRenderer = new MessagesContactListCellRenderer();
+
 	private static transient MessagesMessagesListCellRenderer messagesMessagesListCellRenderer = new MessagesMessagesListCellRenderer();
+
+	private transient Thread guiThread = new Thread((Runnable) () -> {
+		LOGGER.info("guiThread");
+		do {
+			if (this.messagesSelectedAppInfo != null) {
+				try {
+					ArrayList<Message> messages = AppHeader.DATABASE.DATABASEINTERFACE
+							.getMessageFor(this.messagesSelectedAppInfo);
+					for (Message message : messages) {
+						if (message.getFrom().equals(AppHeader.getConfig().getTorDomain())
+								|| message.getTo().equals(AppHeader.getConfig().getTorDomain())) {
+							if (!messagesMessageModel.contains(message)) {
+								messagesMessageModel.addElement(message);
+							}
+						} else {
+							messagesMessageModel.removeElement(message);
+						}
+					}
+				} catch (SQLException e1) {
+					e1.printStackTrace();
+				}
+
+			}
+			try {
+				Thread.sleep(3000);
+			} catch (InterruptedException e2) {
+				e2.printStackTrace();
+			}
+		} while (AppHeader.activev2);
+	}, "guiThread");
+
+	public final transient GuiInterface GUIINTERFACE = new GuiInterface() {
+
+		@Override
+		public void appInfoRecieve(AppInfo appInfo) {
+			if (!AppHeader.messagesContactModel.contains(appInfo)) {
+				AppHeader.messagesContactModel.addElement(appInfo);
+			}
+		}
+
+		@Override
+		public void contactChanged(AppInfo contact) {
+			messagesSelectedAppInfo = contact;
+		}
+
+		@Override
+		public void start() {
+			guiThread.start();
+		}
+	};
 
 	private @Setter AppInfo messagesSelectedAppInfo;
 
@@ -91,9 +142,13 @@ public class AppGui extends JFrame {
 		JScrollPane messagesContactScrollPane = new JScrollPane();
 		messagesSplitPanel.setLeftComponent(messagesContactScrollPane);
 
-		JList<AppInfo> messagesContactList = new JList<>(messagesContactModel);
+		System.err.println(AppHeader.messagesContactModel);
+		JList<AppInfo> messagesContactList = new JList<>(AppHeader.messagesContactModel);
+
 		messagesContactList.addListSelectionListener(e -> {
+			messagesMessageModel.clear();
 			if (messagesSelectedAppInfo != null) {
+				AppHeader.dataInterface.contactChanged(messagesSelectedAppInfo);
 				for (Message message : messagesSelectedAppInfo.getMessages()) {
 					messagesMessageModel.addElement(message);
 				}
@@ -228,11 +283,11 @@ public class AppGui extends JFrame {
 		addWindowListener(new WindowCloseListener());
 	}
 
-	public void receiveAppInfo(AppInfo appInfo) {
-		if (!messagesContactModel.contains(appInfo)) {
-			messagesContactModel.addElement(appInfo);
-		}
-	}
+	/*
+	 * public void receiveAppInfo(AppInfo appInfo) { if
+	 * (!AppHeader.messagesContactModel.contains(appInfo)) {
+	 * AppHeader.messagesContactModel.addElement(appInfo); } }
+	 */
 
 	private void sendMessage() {
 		try {
@@ -249,8 +304,7 @@ public class AppGui extends JFrame {
 			message.setFrom(AppHeader.getConfig().getTorDomain());
 			message.setTo(messagesSelectedAppInfo.getHost());
 
-			AppHeader.DATABASE.DATABASEINTERFACE.saveMessage(message);
-			messagesSelectedAppInfo.send(message);
+			AppHeader.dataInterface.createdMessage(messagesSelectedAppInfo, message);
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
