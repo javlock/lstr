@@ -32,6 +32,8 @@ public class Interfaces {
 
 		void appInfoFromDataBase(AppInfo appInfo);
 
+		void appInfoFromNetServerHandler(AppInfo info) throws SQLException;
+
 		void bootstrapAppInfo(AppInfo appInfo) throws SQLException;
 
 		void contactChanged(AppInfo contact);

@@ -37,7 +37,7 @@ public class AppGui extends JFrame {
 
 	private static final long serialVersionUID = 8795345850667323095L;
 
-	private static final DefaultListModelApi<Message> messagesMessageModel = new DefaultListModelApi<>();
+	private static final DefaultListModelApi<String, Message> messagesMessageModel = new DefaultListModelApi<>();
 
 	private static final Logger LOGGER = LoggerFactory.getLogger("AppGui");
 	private static transient MessagesContactListCellRenderer messagesContactListCellRenderer = new MessagesContactListCellRenderer();
@@ -55,10 +55,10 @@ public class AppGui extends JFrame {
 						if (message.getFrom().equals(AppHeader.getConfig().getTorDomain())
 								|| message.getTo().equals(AppHeader.getConfig().getTorDomain())) {
 							if (!messagesMessageModel.contains(message)) {
-								messagesMessageModel.addElement(message);
+								messagesMessageModel.addElement(message.getId().toString(), message);
 							}
 						} else {
-							messagesMessageModel.removeElement(message);
+							messagesMessageModel.removeElement(message.getId().toString(), message);
 						}
 					}
 				} catch (SQLException e1) {
@@ -78,8 +78,9 @@ public class AppGui extends JFrame {
 
 		@Override
 		public void appInfoRecieve(AppInfo appInfo) {
-			if (!AppHeader.messagesContactModel.contains(appInfo)) {
-				AppHeader.messagesContactModel.addElement(appInfo);
+			if (!AppHeader.CONTACTMODELAPI.contains(appInfo)) {
+				String id = (String) appInfo.getId();
+				AppHeader.CONTACTMODELAPI.addElement(id, appInfo);
 			}
 		}
 
@@ -135,24 +136,27 @@ public class AppGui extends JFrame {
 		JScrollPane messagesMessageScrollPane = new JScrollPane();
 		panel.add(messagesMessageScrollPane, BorderLayout.CENTER);
 
-		JList<Message> messagesList = new JList<>(messagesMessageModel);
+		JList<Message> messagesList = new JList<>(messagesMessageModel.model);
 		messagesList.setCellRenderer(messagesMessagesListCellRenderer);
 		messagesMessageScrollPane.setViewportView(messagesList);
 
 		JScrollPane messagesContactScrollPane = new JScrollPane();
 		messagesSplitPanel.setLeftComponent(messagesContactScrollPane);
 
-		System.err.println(AppHeader.messagesContactModel);
-		JList<AppInfo> messagesContactList = new JList<>(AppHeader.messagesContactModel);
+		System.err.println(AppHeader.CONTACTMODELAPI);
+		JList<AppInfo> messagesContactList = new JList<>(AppHeader.CONTACTMODELAPI.model);
 
 		messagesContactList.addListSelectionListener(e -> {
-			messagesMessageModel.clear();
+			LOGGER.info("addListSelectionListener");
+			messagesMessageModel.clearGui();
+
 			if (messagesSelectedAppInfo != null) {
 				AppHeader.dataInterface.contactChanged(messagesSelectedAppInfo);
 				for (Message message : messagesSelectedAppInfo.getMessages()) {
-					messagesMessageModel.addElement(message);
+					messagesMessageModel.addElement(message.getId().toString(), message);
 				}
 			}
+
 		});
 		messagesContactList.setCellRenderer(messagesContactListCellRenderer);
 		messagesContactScrollPane.setViewportView(messagesContactList);
@@ -347,19 +351,19 @@ public class AppGui extends JFrame {
 
 	public void updateMessages() {
 		try {
-			messagesMessageModel.clear();
+			messagesMessageModel.clearGui();
 			if (messagesSelectedAppInfo == null) {
 				return;
 			}
 			String mydomain = AppHeader.getConfig().getTorDomain();
 
-			CopyOnWriteArrayList<Message> myMessages = AppHeader.connectionInfoMap.get(mydomain).getMessages();
+			CopyOnWriteArrayList<Message> myMessages = AppHeader.CONTACTMODELAPI.getElement(mydomain).getMessages();
 
 			for (Message message : myMessages) {
 				if ((message.getFrom().equals(messagesSelectedAppInfo.getHost())
 						|| message.getTo().equals(messagesSelectedAppInfo.getHost()))
 						&& !messagesMessageModel.contains(message)) {
-					messagesMessageModel.addElement(message);
+					messagesMessageModel.addElement(message.getId().toString(), message);
 				}
 			}
 		} catch (Exception e) {

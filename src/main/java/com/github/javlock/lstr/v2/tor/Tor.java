@@ -38,9 +38,18 @@ public class Tor extends Thread {
 	private File snowflakeBin;
 	private File TORBIN;
 	private boolean torStarted = false;
+	private File torLog = new File(TORDATADIR, "LOG.txt");
 
 	private String filesDirName = TORBINSTRING;
 	public final TorInteface TORINTEFACE = new TorInteface() {
+
+		private void clearLog() throws IOException {
+			if (!torLog.getParentFile().exists()) {
+				Files.createDirectory(torLog.getAbsoluteFile().toPath());
+			}
+			Files.deleteIfExists(torLog.toPath());
+			Files.createFile(torLog.toPath());
+		}
 
 		private void createConfig() throws IOException {
 			int torSocksPort = AppHeader.getConfig().getTorSocksPort();
@@ -98,6 +107,7 @@ public class Tor extends Thread {
 			LOGGER.info("torInit");
 			unpack();
 			createConfig();
+			clearLog();
 			torStart();
 		}
 
@@ -191,17 +201,16 @@ public class Tor extends Thread {
 
 				@Override
 				public void appendOutput(String line) throws Exception {
-					LOGGER.info("appendOutput:{}", line);
+					Files.writeString(torLog.toPath(), line + '\n', StandardOpenOption.APPEND);
 					if (line.contains("Bootstrapped 100%")) {
-
 						String domain = Files.readString(TORSERVICEHOSTNAMFILE.toPath(), StandardCharsets.UTF_8)
 								.replaceAll("[\n]*", "");
-
 						LOGGER.info("domain:[{}]", domain);
 						LOGGER.info("domain 10:[{}]", domain.contains("\n"));
 						AppHeader.DATABASE.DATABASEINTERFACE.torDomain(domain);
 						torStarted = true;
 					}
+
 				}
 
 				@Override
@@ -220,6 +229,10 @@ public class Tor extends Thread {
 				}
 			}).parrentCommand(TORBIN.getAbsolutePath()).arg("-f " + TORRC.getAbsolutePath()).dir(TORDIR).call();
 			LOGGER.info("tor stop with status:{}", torstatus);
+			if (torstatus == 1) {
+				LOGGER.info("tor:stop!!!");
+				Runtime.getRuntime().exit(torstatus);
+			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

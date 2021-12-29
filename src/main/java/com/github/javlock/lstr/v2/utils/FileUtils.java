@@ -2,6 +2,7 @@ package com.github.javlock.lstr.v2.utils;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
@@ -19,26 +20,37 @@ import com.github.javlock.lstr.v2.AppHeader;
 public class FileUtils {
 	private static final Logger LOGGER = LoggerFactory.getLogger("FileUtils");
 
-	public static void findJarFile(File input) {
+	public static void findJarFile(File input) throws URISyntaxException {
 		input = new File(input.getAbsolutePath());
 		input = input.getParentFile();
-		try {
-			try (Stream<Path> stream = Files.find(input.toPath(), 100, (path, basicFileAttributes) -> {
-				File file = path.toFile();
-				return !file.isDirectory() && file.getName().endsWith("-jar-with-dependencies.jar");
-			})) {
-				Optional<Path> optional = stream.findFirst();
-				if (optional.isPresent()) {
-					File file = optional.get().toFile();
-					LOGGER.info("exe jar FOUND: {}", file);
-					AppHeader.JARFILE = file;
-					return;
-				}
+		try (Stream<Path> stream = Files.find(input.toPath(), 100, (path, basicFileAttributes) -> {
+			File file = path.toFile();
+			if (!file.canRead()) {
+				LOGGER.warn("cant read: {}", file);
+				return false;
+			}
+			return !file.isDirectory() && file.getName().endsWith("-jar-with-dependencies.jar");
+		})) {
+			Optional<Path> optional = stream.parallel().findFirst();
+			if (optional.isPresent()) {
+				File file = optional.get().toFile();
+				LOGGER.info("exe jar FOUND: {}", file);
+				AppHeader.JARFILE = file;
+				return;
 			}
 
-		} catch (IOException e) {
+		} catch (Exception e) {
 			e.printStackTrace();
+
 		}
+		LOGGER.info("try search via ProtectionDomain");
+		File file = new File(FileUtils.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+		LOGGER.info("{}", file);
+		if (file.isFile()) {
+			AppHeader.JARFILE = file;
+			return;
+		}
+
 		LOGGER.error("exe jar not found");
 		Runtime.getRuntime().exit(2);
 	}

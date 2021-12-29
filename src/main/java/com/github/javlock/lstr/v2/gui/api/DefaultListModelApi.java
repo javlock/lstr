@@ -1,68 +1,54 @@
 package com.github.javlock.lstr.v2.gui.api;
 
-import java.io.Serializable;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 import javax.swing.DefaultListModel;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.javlock.lstr.data.Message;
-import com.github.javlock.lstr.v2.data.AppInfo;
-import com.github.javlock.lstr.v2.data.Data;
+public class DefaultListModelApi<K, E> {
 
-public class DefaultListModelApi<E> extends DefaultListModel<E> {
-	private static final long serialVersionUID = -2216686696758956440L;
-	private static final transient Logger LOGGER = LoggerFactory.getLogger("");
+	private static final Logger LOGGER = LoggerFactory.getLogger("DefaultListModelApi");
 
-	public final ConcurrentHashMap<Object, Serializable> connectionInfoMap = new ConcurrentHashMap<>();
+	public final DefaultListModel<E> model = new DefaultListModel<>();
+	public final ConcurrentHashMap<K, E> connectionInfoMap = new ConcurrentHashMap<>();
 
-	@Override
-	public void addElement(E element) {
-
-		if (element instanceof Message) {
-			Message data = ((Message) element);
-			String key = data.getId();
-			connectionInfoMap.put(key, data);
-		} else if (element instanceof AppInfo) {
-			AppInfo data = ((AppInfo) element);
-			Object key = data.getId();
-			connectionInfoMap.put(key, data);
-		} else {
-			throw new UnsupportedOperationException(
-					String.format("impl get key in (addElement) for %s", element.getClass().getSimpleName()));
-		}
-
-		LOGGER.info("connectionInfoMap:{}", connectionInfoMap);
-
-		super.addElement(element);
+	public void addElement(K key, E element) {
+		addElementIfAbsent(key, a -> element);
 	}
 
-	@Override
-	public boolean contains(Object elem) {
-		Object key = null;
-		if (elem instanceof Message) {
-			key = ((Message) elem).getId();
-		} else if (elem instanceof AppInfo) {
-			key = ((AppInfo) elem).getId();
-		} else {
-			throw new UnsupportedOperationException(
-					String.format("impl get key in (contains) for %s", elem.getClass().getSimpleName()));
+	public E addElementIfAbsent(K key, Function<? super K, ? extends E> mappingFunction) {
+		E element = connectionInfoMap.computeIfAbsent(key, mappingFunction);
+		if (!model.contains(element)) {
+			model.addElement(element);
 		}
-
-		if (connectionInfoMap.contains(key)) {
-			return true;
-		}
-		return super.contains(elem);
+		return element;
 	}
 
-	@Override
-	public boolean removeElement(Object obj) {
-		Data data = (Data) obj;
-		Object key = data.getId();
-		connectionInfoMap.remove(key, data);
-
-		return super.removeElement(obj);
+	public void clearGui() {
+		model.clear();
 	}
+
+	public boolean contains(E element) {
+		for (Object iterable_element : model.toArray()) {
+			if (element == iterable_element || element.equals(iterable_element)) {
+				return true;
+			}
+		}
+		boolean modelExist = model.contains(element);
+		boolean mapExist = connectionInfoMap.containsValue(element);
+		return modelExist || mapExist;
+	}
+
+	public E getElement(K key) {
+		return connectionInfoMap.get(key);
+	}
+
+	public void removeElement(K key, E element) {
+		model.removeElement(element);
+		connectionInfoMap.remove(key, element);
+	}
+
 }

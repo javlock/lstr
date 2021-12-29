@@ -93,7 +93,7 @@ public class DataBase extends Thread {
 
 		@Override
 		public void saveMessage(Message message) throws SQLException {
-			if (!messageDao.idExists(message.getId())) {
+			if (!messageDao.idExists(message.getId().toString())) {
 				messageDao.create(message);
 			}
 		}

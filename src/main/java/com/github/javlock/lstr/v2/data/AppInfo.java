@@ -123,9 +123,6 @@ public class AppInfo extends Data {
 			}
 			gr.shutdownGracefully();
 		}
-
-		LOGGER.warn("SIZE:{}", AppHeader.connectionInfoMap.values().stream().filter(AppInfo::isConnected).count());
-
 		return result;
 	}
 
@@ -166,16 +163,26 @@ public class AppInfo extends Data {
 		return channelFuture != null || context != null;
 	}
 
+	/**
+	 * @param torDomain
+	 * @return true if (torDomain==null) OR (torDomain.equalsIgnoreCase
+	 *         AppInfo.host)
+	 */
 	public boolean itsMe(String torDomain) {
+		if (torDomain == null) {
+			return true;// for skip connect
+		}
 		return torDomain.equalsIgnoreCase(host);
 	}
 
 	public void send(Serializable msg) {
 		try {
 			if (channelFuture != null) {
-				channelFuture.channel().writeAndFlush(msg);
+				ChannelFuture result = channelFuture.channel().writeAndFlush(msg);
+				LOGGER.info(result.toString());
 			} else if (context != null) {
-				context.channel().writeAndFlush(msg);
+				ChannelFuture result = context.channel().writeAndFlush(msg);
+				LOGGER.info(result.toString());
 			}
 		} catch (Exception e) {
 			e.printStackTrace();

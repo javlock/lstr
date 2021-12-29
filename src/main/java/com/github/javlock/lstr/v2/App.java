@@ -9,7 +9,7 @@ import com.github.javlock.lstr.v2.Interfaces.AppInteface;
 public class App {
 
 	public static void main(String[] args) throws Exception {
-		System.err.println(AppHeader.messagesContactModel);
+		// System.err.println(AppHeader.messagesContactModel);
 
 		AppHeader.NETWORKWORKER.getBootStrap()
 				.appendUrl(new URL("https://raw.githubusercontent.com/javlock/lstr/main/infocon/bootstrap"));

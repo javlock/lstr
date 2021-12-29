@@ -84,7 +84,7 @@ public class NetworkWorker {
 		@Override
 		public void run() {
 			do {
-				for (Entry<String, AppInfo> entry : AppHeader.connectionInfoMap.entrySet()) {
+				for (Entry<String, AppInfo> entry : AppHeader.CONTACTMODELAPI.connectionInfoMap.entrySet()) {
 					AppInfo appInfo = entry.getValue();
 					appInfo.connect();
 				}

@@ -11,12 +11,16 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.border.TitledBorder;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.github.javlock.lstr.v2.AppHeader;
 import com.github.javlock.lstr.v2.data.AppInfo;
 
 public class MessagesContactListCellRenderer implements ListCellRenderer<AppInfo> {
 	protected static Border noFocusBorder = new EmptyBorder(15, 1, 1, 1);
 	protected static TitledBorder focusBorder = new TitledBorder(LineBorder.createGrayLineBorder(), "title");
+	private static final Logger LOGGER = LoggerFactory.getLogger("MessagesContactListCellRenderer");
 	protected DefaultListCellRenderer defaultRenderer = new DefaultListCellRenderer();
 
 	@Override
@@ -36,6 +40,7 @@ public class MessagesContactListCellRenderer implements ListCellRenderer<AppInfo
 			label.setText(value.getHost());
 		}
 		if (isSelected) {
+			LOGGER.info("addListSelectionListener");
 			AppHeader.GUI.setMessagesSelectedAppInfo(value);
 		}
 

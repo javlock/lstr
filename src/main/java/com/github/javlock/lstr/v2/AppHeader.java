@@ -1,9 +1,9 @@
 package com.github.javlock.lstr.v2;
 
 import java.io.File;
+import java.net.URISyntaxException;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.lang3.SystemUtils;
 import org.slf4j.LoggerFactory;
@@ -34,8 +34,13 @@ public abstract class AppHeader {
 	public static File JARFILE;
 	public static final ArrayList<String> obfs4List = new ArrayList<>();
 	static {
-		FileUtils.findJarFile(DIR);
-		FileUtils.initObfs4List();
+		try {
+			FileUtils.findJarFile(DIR);
+			FileUtils.initObfs4List();
+		} catch (URISyntaxException e) {
+			e.printStackTrace();
+			Runtime.getRuntime().exit(3);
+		}
 	}
 	public static final DataBase DATABASE = new DataBase();
 	public static final File DATABASFILE = new File(DIR, "database.db");
@@ -47,8 +52,7 @@ public abstract class AppHeader {
 
 	public static final ChannelFutureDummy DUMMY = new ChannelFutureDummy();
 
-	public static final DefaultListModelApi<AppInfo> messagesContactModel = new DefaultListModelApi<>();
-	public static final ConcurrentHashMap<String, AppInfo> connectionInfoMap = new ConcurrentHashMap<>();
+	public static final DefaultListModelApi<String, AppInfo> CONTACTMODELAPI = new DefaultListModelApi<>();
 
 	public static AppGui GUI = new AppGui();
 
@@ -62,9 +66,15 @@ public abstract class AppHeader {
 		}
 
 		@Override
+		public void appInfoFromNetServerHandler(AppInfo info) throws SQLException {
+			GUI.GUIINTERFACE.appInfoRecieve(info);
+			AppHeader.DATABASE.DATABASEINTERFACE.saveAppInfo(info);
+		}
+
+		@Override
 		public void bootstrapAppInfo(AppInfo appInfo) throws SQLException {
-			LoggerFactory.getLogger("bootstrapAppInfo").info("appInfo:{}", appInfo);
-			connectionInfoMap.putIfAbsent(appInfo.getHost(), appInfo);
+			LoggerFactory.getLogger("DDDD").info("{}", appInfo);
+			CONTACTMODELAPI.addElement((String) appInfo.getId(), appInfo);
 			AppHeader.DATABASE.DATABASEINTERFACE.saveAppInfo(appInfo);
 		}
 
